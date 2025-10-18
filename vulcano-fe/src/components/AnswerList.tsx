@@ -1,9 +1,11 @@
 import React from "react";
 import ItemView from "./DocumentItem";
 
-const AnswerList: React.FC = () => {
-    const listAnswers = Array.from({ length: 500 }, (_, i) => `Answer ${i + 1}`);
+interface AnswerListProps {
+    listAnswers?: string[];
+}
 
+const AnswerList: React.FC<AnswerListProps> = ({ listAnswers = [] }) => {
     const onViewAnswer = (fileName: string) => {
         console.log(`Viewing file: ${fileName}`);
     }
