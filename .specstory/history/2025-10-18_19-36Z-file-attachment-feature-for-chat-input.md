@@ -2088,3 +2088,413 @@ _**Assistant (copilot/gpt-4.1)**_
 
 ---
 
+_**User (2025-10-18 20:13Z)**_
+
+me lo scrivi meglio:
+
+<span role="img" aria-label="allega">📎</span>
+      {selectedFile ? (
+        <span className="pdf-file-drop__filename">{selectedFile.name}</span>
+      ) : errorUpload ? (
+        <span className="pdf-file-drop__error">{errorUpload}</span>
+      ) : (
+        <span className="pdf-file-drop__placeholder">
+          Trascina o clicca per PDF
+        </span>
+      )}
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````tsx
+// ...existing code...
+      <span role="img" aria-label="allega">📎</span>
+      <span>
+        {selectedFile && (
+          <span className="pdf-file-drop__filename">{selectedFile.name}</span>
+        )}
+        {!selectedFile && errorUpload && (
+          <span className="pdf-file-drop__error">{errorUpload}</span>
+        )}
+        {!selectedFile && !errorUpload && (
+          <span className="pdf-file-drop__placeholder">
+            Trascina o clicca per PDF
+          </span>
+        )}
+      </span>
+// ...existing code...
+````
+
+---
+
+_**User (2025-10-18 20:16Z)**_
+
+perché anche se carico un pdf continuo a vedere il drag and drop? puoi spiegarmelo oltre a correggere?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+Il drag and drop rimane visibile perché il componente `PdfFileDrop` viene mostrato sempre quando `showPdfDrop` è `true`, indipendentemente dal fatto che sia stato caricato un PDF. Non c'è logica che lo nasconda dopo il caricamento di un file valido.
+
+**Correzione:**  
+Nascondi il drag and drop quando un PDF è stato selezionato, mostrando invece solo il nome del file e un bottone per rimuoverlo.
+
+---
+
+### [ChatInput.tsx](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/components/ChatInput.tsx)
+
+Modifica la logica per mostrare il drag and drop solo se non c'è un PDF selezionato. Se c'è un PDF, mostra il nome e un bottone per rimuoverlo.
+
+````tsx
+// ...existing code...
+    return (
+        <form
+            onSubmit={handleSubmit}
+            className="chat-window-form chat-input-form"
+        >
+            <div className="chat-input-row">
+                <button
+                    type="button"
+                    className={`chat-input-togglepdf${showPdfDrop ? " active" : ""}`}
+                    onClick={handleTogglePdfDrop}
+                    aria-label={showPdfDrop ? "Nascondi PDF" : "Allega PDF"}
+                >
+                    {showPdfDrop ? "−" : "+"}
+                </button>
+                <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Scrivi la tua domanda..."
+                    className="chat-window"
+                    rows={2}
+                    wrap="soft"
+                />
+                <button type="submit">Invia</button>
+            </div>
+            {showPdfDrop && (
+                <div className="chat-input-pdfdrop">
+                    <div className="chat-input-pdfdrop-inner">
+                        {!pdfFile ? (
+                            <PdfFileDrop onFileSelect={setPdfFile} />
+                        ) : (
+                            <div className="chat-input-pdf-selected">
+                                <span className="pdf-file-drop__filename">{pdfFile.name}</span>
+                                <button
+                                    type="button"
+                                    className="chat-input-remove-pdf"
+                                    onClick={() => setPdfFile(null)}
+                                    aria-label="Rimuovi PDF"
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </form>
+    );
+// ...existing code...
+````
+
+**Spiegazione:**  
+- Il drag and drop (`PdfFileDrop`) viene mostrato solo se non c'è un PDF selezionato (`!pdfFile`).
+- Se c'è un PDF selezionato, viene mostrato il nome del file e un bottone "×" per rimuoverlo.
+- In questo modo, il drag and drop scompare dopo il caricamento di un PDF.
+
+---
+
+_**User (2025-10-18 20:18Z)**_
+
+uhmmm no, vorrei che quando viene caricato il file venga stampato in console il nome per ora, e che si nasconda il drag and drop e si "pulisca", in modo tale che quando si ripreme il + possa selezionare un nuovo file
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````tsx
+import React, { useState } from "react";
+import PdfFileDrop from "./PdfFileDrop";
+// ...existing code...
+
+    // Nuova funzione per gestire la selezione del file PDF
+    const handlePdfSelect = (file: File | null) => {
+        if (file) {
+            console.log("PDF selezionato:", file.name);
+            setPdfFile(file);
+            setShowPdfDrop(false); // Nasconde il drag and drop dopo la selezione
+        }
+    };
+
+    return (
+        <form
+            onSubmit={handleSubmit}
+            className="chat-window-form chat-input-form"
+        >
+            <div className="chat-input-row">
+                <button
+                    type="button"
+                    className={`chat-input-togglepdf${showPdfDrop ? " active" : ""}`}
+                    onClick={() => {
+                        setShowPdfDrop((prev) => !prev);
+                        setPdfFile(null); // Pulisce il file selezionato quando si riapre il drag and drop
+                    }}
+                    aria-label={showPdfDrop ? "Nascondi PDF" : "Allega PDF"}
+                >
+                    {showPdfDrop ? "−" : "+"}
+                </button>
+                <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Scrivi la tua domanda..."
+                    className="chat-window"
+                    rows={2}
+                    wrap="soft"
+                />
+                <button type="submit">Invia</button>
+            </div>
+            {showPdfDrop && (
+                <div className="chat-input-pdfdrop">
+                    <div className="chat-input-pdfdrop-inner">
+                        <PdfFileDrop onFileSelect={handlePdfSelect} />
+                    </div>
+                </div>
+            )}
+        </form>
+    );
+// ...existing code...
+````
+
+---
+
+_**User (2025-10-18 20:22Z)**_
+
+ok secondo te quant'è il limite di upload in questo momento?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+Al momento non c'è alcun limite di upload lato frontend: il componente accetta qualsiasi PDF, indipendentemente dalla dimensione.  
+Il limite effettivo dipende solo dalla configurazione del backend/server e dal browser, non dal codice React attuale.
+
+---
+
+_**User (2025-10-18 20:22Z)**_
+
+ok quindi anche se metto un file grande se lo prende all'istante giusto?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+Sì, esatto.  
+Il componente accetta e gestisce immediatamente qualsiasi file PDF selezionato, indipendentemente dalla dimensione, perché non è presente alcun controllo o limite lato frontend.  
+Eventuali limiti di dimensione saranno gestiti solo dal backend/server o dal browser.
+
+---
+
+_**User (2025-10-18 20:23Z)**_
+
+ok facciamo finta che quando stampa sta elaborando il pdf (tipo uno sleep) e nel frattempo vorrei che il drag and drop mostra una percentuale di caricamento
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [ChatInput.tsx](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/components/ChatInput.tsx)
+
+Simula l'elaborazione PDF con uno "sleep" e passa la percentuale di caricamento a `PdfFileDrop`. Mostra la percentuale durante il finto caricamento.
+
+````tsx
+import React, { useState } from "react";
+import PdfFileDrop from "./PdfFileDrop";
+// ...existing code...
+
+const ChatInput: React.FC = () => {
+    const [input, setInput] = useState("");
+    const [pdfFile, setPdfFile] = useState<File | null>(null);
+    const [showPdfDrop, setShowPdfDrop] = useState(false);
+    const [loadingPercent, setLoadingPercent] = useState<number>(0);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (input.trim()) {
+            console.log("Domanda inviata:", input);
+            if (pdfFile) {
+                console.log("PDF allegato:", pdfFile.name);
+            }
+            setInput("");
+            setPdfFile(null);
+            setShowPdfDrop(false);
+            setLoadingPercent(0);
+        }
+    };
+
+    const handlePdfSelect = async (file: File | null) => {
+        if (file) {
+            setLoadingPercent(1);
+            // Simula caricamento con percentuale
+            for (let i = 1; i <= 100; i += 5) {
+                await new Promise(res => setTimeout(res, 20));
+                setLoadingPercent(i);
+            }
+            console.log("PDF selezionato:", file.name);
+            setPdfFile(file);
+            setShowPdfDrop(false);
+            setLoadingPercent(0);
+        }
+    };
+
+    return (
+        <form
+            onSubmit={handleSubmit}
+            className="chat-window-form chat-input-form"
+        >
+            <div className="chat-input-row">
+                <button
+                    type="button"
+                    className={`chat-input-togglepdf${showPdfDrop ? " active" : ""}`}
+                    onClick={() => {
+                        setShowPdfDrop((prev) => !prev);
+                        setPdfFile(null);
+                        setLoadingPercent(0);
+                    }}
+                    aria-label={showPdfDrop ? "Nascondi PDF" : "Allega PDF"}
+                >
+                    {showPdfDrop ? "−" : "+"}
+                </button>
+                <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Scrivi la tua domanda..."
+                    className="chat-window"
+                    rows={2}
+                    wrap="soft"
+                />
+                <button type="submit">Invia</button>
+            </div>
+            {showPdfDrop && (
+                <div className="chat-input-pdfdrop">
+                    <div className="chat-input-pdfdrop-inner">
+                        <PdfFileDrop
+                            onFileSelect={handlePdfSelect}
+                            loadingPercent={loadingPercent}
+                        />
+                    </div>
+                </div>
+            )}
+        </form>
+    );
+};
+
+export default ChatInput;
+````
+
+---
+
+### [PdfFileDrop.tsx](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/components/PdfFileDrop.tsx)
+
+Accetta la prop `loadingPercent` e mostra la percentuale se > 0.
+
+````tsx
+import React, { useRef, useState } from "react";
+import '../styles/main.scss';
+
+interface PdfFileDropProps {
+  onFileSelect: (file: File | null) => void;
+  loadingPercent?: number;
+}
+
+const PdfFileDrop: React.FC<PdfFileDropProps> = ({ onFileSelect, loadingPercent = 0 }) => {
+  const [dragActive, setDragActive] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [errorUpload, setErrorUpload] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = (file: File | null) => {
+    if (file && file.type === "application/pdf") {
+      setErrorUpload(null);
+      setSelectedFile(file);
+      onFileSelect(file);
+    } else {
+      setErrorUpload("Per favore carica un file PDF valido.");
+      setSelectedFile(null);
+      onFileSelect(null);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    handleFile(file);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0] || null;
+    handleFile(file);
+  };
+
+  return (
+    <div
+      className={`pdf-file-drop${dragActive ? " drag-active" : ""}`}
+      onDragOver={e => { e.preventDefault(); setDragActive(true); }}
+      onDragLeave={e => { e.preventDefault(); setDragActive(false); }}
+      onDrop={handleDrop}
+      onClick={() => fileInputRef.current?.click()}
+      title="Trascina qui un PDF o clicca per selezionare"
+    >
+      <input
+        type="file"
+        accept="application/pdf"
+        className="pdf-file-drop-input"
+        ref={fileInputRef}
+        onChange={handleChange}
+        tabIndex={-1}
+      />
+      <span role="img" aria-label="allega">📎</span>
+      <span>
+        {loadingPercent > 0 ? (
+          <span className="pdf-file-drop__loading">
+            Caricamento... {loadingPercent}%
+          </span>
+        ) : selectedFile ? (
+          <span className="pdf-file-drop__filename">{selectedFile.name}</span>
+        ) : errorUpload ? (
+          <span className="pdf-file-drop__error">{errorUpload}</span>
+        ) : (
+          <span className="pdf-file-drop__placeholder">
+            Trascina o clicca per PDF
+          </span>
+        )}
+      </span>
+    </div>
+  );
+};
+
+export default PdfFileDrop;
+````
+
+---
+
+### [main.scss](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/styles/main.scss)
+
+Aggiungi stile per la percentuale di caricamento.
+
+````scss
+// ...existing code...
+
+.pdf-file-drop__loading {
+  color: $color-info;
+  font-size: 1em;
+  font-weight: 500;
+}
+
+// ...existing code...
+````
+
+---
+

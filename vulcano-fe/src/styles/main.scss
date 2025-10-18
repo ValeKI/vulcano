@@ -418,6 +418,12 @@ textarea {
     color: $color-text-muted;
     font-size: 0.95em;
   }
+
+  &__loading {
+    color: $color-info;
+    font-size: 1em;
+    font-weight: 500;
+  }
 }
 
 .pdf-file-drop.drag-active {

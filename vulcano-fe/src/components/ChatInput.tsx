@@ -5,8 +5,9 @@ const ChatInput: React.FC = () => {
     const [input, setInput] = useState("");
     const [pdfFile, setPdfFile] = useState<File | null>(null);
     const [showPdfDrop, setShowPdfDrop] = useState(false);
+    const [loadingPercent, setLoadingPercent] = useState<number>(0);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (input.trim()) {
             console.log("Domanda inviata:", input);
@@ -16,12 +17,23 @@ const ChatInput: React.FC = () => {
             setInput("");
             setPdfFile(null);
             setShowPdfDrop(false);
+            setLoadingPercent(0);
         }
     };
 
-    const handleTogglePdfDrop = () => {
-        setShowPdfDrop((prev) => !prev);
-        if (showPdfDrop) setPdfFile(null);
+    const handlePdfSelect = async (file: File | null) => {
+        if (file) {
+            setLoadingPercent(1);
+            // Simula caricamento con percentuale
+            for (let i = 1; i <= 100; i += 5) {
+                await new Promise((res) => setTimeout(res, 20));
+                setLoadingPercent(i);
+            }
+            console.log("PDF selezionato:", file.name);
+            setPdfFile(file);
+            setShowPdfDrop(false);
+            setLoadingPercent(0);
+        }
     };
 
     return (
@@ -35,7 +47,11 @@ const ChatInput: React.FC = () => {
                     className={`chat-input-togglepdf${
                         showPdfDrop ? " active" : ""
                     }`}
-                    onClick={handleTogglePdfDrop}
+                    onClick={() => {
+                        setShowPdfDrop((prev) => !prev);
+                        setPdfFile(null);
+                        setLoadingPercent(0);
+                    }}
                     aria-label={showPdfDrop ? "Nascondi PDF" : "Allega PDF"}
                 >
                     {showPdfDrop ? "−" : "+"}
@@ -53,7 +69,10 @@ const ChatInput: React.FC = () => {
             {showPdfDrop && (
                 <div className="chat-input-pdfdrop">
                     <div className="chat-input-pdfdrop-inner">
-                        <PdfFileDrop onFileSelect={setPdfFile} />
+                        <PdfFileDrop
+                            onFileSelect={handlePdfSelect}
+                            loadingPercent={loadingPercent}
+                        />
                     </div>
                 </div>
             )}
