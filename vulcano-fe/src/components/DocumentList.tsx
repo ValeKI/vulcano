@@ -1,9 +1,12 @@
 import React from 'react';
 import DocumentItem from './DocumentItem';
 
-const DocumentList: React.FC = () => {
-    const listFiles = Array.from({ length: 500 }, (_, i) => `File${i + 1}.txt`);
+interface DocumentListProps {
+    listFiles?: string[];
+}
 
+const DocumentList: React.FC<DocumentListProps> = ({ listFiles = [] }) => {
+    
     const onViewFile = (fileName: string) => {
         console.log(`Viewing file: ${fileName}`);
     }
