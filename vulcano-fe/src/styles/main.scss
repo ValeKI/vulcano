@@ -1,4 +1,4 @@
-@use './variables' as *;
+@import '_variables.scss';
 
 #root {
   max-width: 1280px;
@@ -93,4 +93,202 @@
   .forgot-btn:hover {
     color: $color-primary;
   }
+}
+
+body {
+  overflow: hidden;
+}
+
+.loginbox-container {
+  background: --color-bg-light;
+}
+
+.chatbox-container {
+  display: flex;
+  height: 80vh;
+  width: 80vw; 
+  margin: auto;
+  background: $color-bg-card;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+  overflow: hidden;
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  margin: auto;
+}
+
+.chatbox-left,
+.chatbox-right {
+  flex: 1.1;
+  background: $color-bg-light;
+  padding: 1.5rem;
+  border-right: 1px solid $color-border;
+  min-width: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-width: 300px;
+}
+
+.chatbox-right {
+  border-right: none;
+  border-left: 1px solid $color-border;
+}
+
+.chatbox-center {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chatbox-responsewindow {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.chatbox-chatwindow {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  margin-bottom: 0;
+}
+
+.chat-window-form {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  align-items: flex-end;
+  margin-top: auto;
+}
+
+.file-view {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  border: 1px solid $color-border;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  background-color: $color-bg-light;
+
+  &.selected {
+    background-color: $color-selected;
+
+    &:hover {
+      background-color: $color-selected-hover;
+    }
+  }
+
+  &:hover {
+    background-color: $color-bg-hover;
+  }
+
+  .file-icon {
+    width: 40px;
+    display: flex;
+    justify-content: center;
+
+    img {
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  .file-name {
+    flex-grow: 1;
+    text-align: center;
+    font-size: 1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: $color-text;
+  }
+
+  .file-actions {
+    display: flex;
+    gap: 0.5rem;
+
+    button {
+      border: none;
+      background: none;
+      cursor: pointer;
+      padding: 0;
+
+      img {
+        width: 20px;
+        height: 20px;
+      }
+
+      &:hover img {
+        filter: brightness(0.7);
+      }
+    }
+  }
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.chatbox-container textarea,
+.chatbox-center textarea,
+textarea {
+  border-radius: 12px;
+  &:focus {
+    outline: none;
+    box-shadow: none;
+  }
+}
+
+.chat-window {
+  flex: 1;
+  padding: 0.5rem;
+  min-height: 2.5em;
+  resize: none;
+  overflow-x: auto;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  border-radius: 12px;
+}
+
+.response-window-content {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+/* Scrollbar moderna, sottile e con thumb tondeggiante */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background: $color-bg-card;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $color-primary;
+  border-radius: 12px;
+  min-height: 24px;
+  min-width: 24px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: $color-primary-dark;
+}
+
+::-webkit-scrollbar-corner {
+  background: $color-bg-card;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: $color-primary $color-bg-card;
 }
