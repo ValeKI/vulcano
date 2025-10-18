@@ -3,8 +3,10 @@ import ItemList from '../components/ItemList';
 import ChatInput from '../components/ChatInput';
 import ChatResponse from '../components/ChatResponse';
 import AnswerList from '../components/AnswerList';
+import VulcanoPage from './VulcanoPage';
 
 const Chat: React.FC = () => (
+  <VulcanoPage>
   <div className="chatbox-container">
     <div className="chatbox-left">
       <ItemList />
@@ -21,6 +23,7 @@ const Chat: React.FC = () => (
       <AnswerList />
     </div>
   </div>
+  </VulcanoPage>
 );
 
 export default Chat;
