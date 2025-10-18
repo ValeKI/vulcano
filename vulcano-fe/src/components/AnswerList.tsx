@@ -1,5 +1,5 @@
 import React from "react";
-import ItemView from "./ListItem";
+import ItemView from "./DocumentItem";
 
 const AnswerList: React.FC = () => {
     const listAnswers = Array.from({ length: 500 }, (_, i) => `Answer ${i + 1}`);

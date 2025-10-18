@@ -1,5 +1,5 @@
 import React from 'react';
-import ItemList from '../components/ItemList';
+import DocumentList from '../components/DocumentList';
 import ChatInput from '../components/ChatInput';
 import ChatResponse from '../components/ChatResponse';
 import AnswerList from '../components/AnswerList';
@@ -9,7 +9,7 @@ const Chat: React.FC = () => (
   <VulcanoPage>
   <div className="chatbox-container">
     <div className="chatbox-left">
-      <ItemList />
+      <DocumentList />
     </div>
     <div className="chatbox-center">
       <div className="chatbox-responsewindow">

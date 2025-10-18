@@ -1,7 +1,7 @@
 import React from 'react';
-import ListItem from './ListItem';
+import DocumentItem from './DocumentItem';
 
-const ItemList: React.FC = () => {
+const DocumentList: React.FC = () => {
     const listFiles = Array.from({ length: 500 }, (_, i) => `File${i + 1}.txt`);
 
     const onViewFile = (fileName: string) => {
@@ -16,11 +16,11 @@ const ItemList: React.FC = () => {
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
             {listFiles.map((file, idx) => (
                 <li key={idx}>
-                    <ListItem name={file} onView={() => onViewFile(file)} onDownload={() => onDownloadFile(file)} selected={idx === 3} />
+                    <DocumentItem name={file} onView={() => onViewFile(file)} onDownload={() => onDownloadFile(file)} selected={idx === 3} />
                 </li>
             ))}
         </ul>
     );
 }
 
-export default ItemList;
+export default DocumentList;
