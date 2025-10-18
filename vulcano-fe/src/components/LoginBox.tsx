@@ -1,15 +1,16 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import '../styles/main.scss';
+import "../styles/main.scss";
 import { LoginService } from "../services/LoginService";
-
+import { useAuth } from "../context/AuthContext";
 
 const LoginBox: React.FC = () => {
-  const [usernameOrEmail, setusernameOrEmail] = useState("");
+  const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -18,12 +19,13 @@ const LoginBox: React.FC = () => {
     setLoading(true);
 
     try {
-      const success = await LoginService.login({ usernameOrEmail, password });
-      if (success) {
-        navigate("/chat");
-      }
+      const token = await LoginService.login({ usernameOrEmail, password });
+
+      login(token);
+
+      navigate("/chat");
     } catch (err: any) {
-      setError(err);
+      setError(typeof err === "string" ? err : "Credenziali non valide");
     } finally {
       setLoading(false);
     }
@@ -39,7 +41,7 @@ const LoginBox: React.FC = () => {
             type="text"
             placeholder="Email o username"
             value={usernameOrEmail}
-            onChange={(e) => setusernameOrEmail(e.target.value)}
+            onChange={(e) => setUsernameOrEmail(e.target.value)}
             className="user-input"
           />
 
@@ -65,6 +67,5 @@ const LoginBox: React.FC = () => {
     </div>
   );
 };
-
 
 export default LoginBox;
