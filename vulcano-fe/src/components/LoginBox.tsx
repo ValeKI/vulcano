@@ -25,6 +25,7 @@ const LoginBox: React.FC = () => {
 
       navigate("/chat");
     } catch (err: any) {
+      console.error("Login failed:", err);
       setError(typeof err === "string" ? err : "Credenziali non valide");
     } finally {
       setLoading(false);
