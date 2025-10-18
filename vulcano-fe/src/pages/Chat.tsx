@@ -13,7 +13,7 @@ const Chat: React.FC = () => (
     </div>
     <div className="chatbox-center">
       <div className="chatbox-responsewindow">
-        <ChatResponse />
+        <ChatResponse text="Example response text" />
       </div>
       <div className="chatbox-chatwindow">
         <ChatInput />
