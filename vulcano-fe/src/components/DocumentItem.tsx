@@ -5,17 +5,17 @@ import DownloadIcon from "../assets/download.png";
 import FileIcon from "../assets/file.png";
 import QuestionMarkIcon from "../assets/question-mark.png";
 
-type ListItemType = "file" | "answer";
+type DocumentItemType = "file" | "answer";
 
-interface ListItemProps {
+interface DocumentItemProps {
   name: string;
   selected?: boolean;
-  type?: ListItemType;
+  type?: DocumentItemType;
   onView?: () => void;
   onDownload?: () => void;
 }
 
-const ListItem: React.FC<ListItemProps> = ({
+const DocumentItem: React.FC<DocumentItemProps> = ({
   name,
   type = "file",
   selected = false,
@@ -53,4 +53,4 @@ const ListItem: React.FC<ListItemProps> = ({
   );
 };
 
-export default ListItem;
+export default DocumentItem;
