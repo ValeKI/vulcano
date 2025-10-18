@@ -3,18 +3,22 @@ import '../styles/main.scss';
 
 interface PdfFileDropProps {
   onFileSelect: (file: File | null) => void;
+  loadingPercent?: number;
 }
 
-const PdfFileDrop: React.FC<PdfFileDropProps> = ({ onFileSelect }) => {
+const PdfFileDrop: React.FC<PdfFileDropProps> = ({ onFileSelect, loadingPercent = 0 }) => {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [errorUpload, setErrorUpload] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (file: File | null) => {
     if (file && file.type === "application/pdf") {
+      setErrorUpload(null);
       setSelectedFile(file);
       onFileSelect(file);
     } else {
+      setErrorUpload("Per favore carica un file PDF valido.");
       setSelectedFile(null);
       onFileSelect(null);
     }
@@ -50,13 +54,21 @@ const PdfFileDrop: React.FC<PdfFileDropProps> = ({ onFileSelect }) => {
         tabIndex={-1}
       />
       <span role="img" aria-label="allega">📎</span>
-      {selectedFile ? (
-        <span className="pdf-file-drop__filename">{selectedFile.name}</span>
-      ) : (
-        <span className="pdf-file-drop__placeholder">
-          Trascina o clicca per PDF
-        </span>
-      )}
+      <span>
+        {loadingPercent > 0 ? (
+          <span className="pdf-file-drop__loading">
+            Caricamento... {loadingPercent}%
+          </span>
+        ) : selectedFile ? (
+          <span className="pdf-file-drop__filename">{selectedFile.name}</span>
+        ) : errorUpload ? (
+          <span className="pdf-file-drop__error">{errorUpload}</span>
+        ) : (
+          <span className="pdf-file-drop__placeholder">
+            Trascina o clicca per PDF
+          </span>
+        )}
+      </span>
     </div>
   );
 };
