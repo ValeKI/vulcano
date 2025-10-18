@@ -112,11 +112,11 @@ body {
 .chatbox-container {
   display: flex;
   height: 80vh;
-  width: 80vw; 
+  width: 80vw;
   margin: auto;
   background: $color-bg-card;
-  border-radius: 16px;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+  border-radius: 1.2rem;
+  box-shadow: 0 0.125rem 1rem rgba(0,0,0,0.08);
   overflow: hidden;
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -128,16 +128,16 @@ body {
   flex: 1.1;
   background: $color-bg-light;
   padding: 1.5rem;
-  border-right: 1px solid $color-border;
-  min-width: 220px;
+  border-right: 0.07rem solid $color-border;
+  min-width: 14rem;
   overflow-y: auto;
   overflow-x: hidden;
-  max-width: 300px;
+  max-width: 19rem;
 }
 
 .chatbox-right {
   border-right: none;
-  border-left: 1px solid $color-border;
+  border-left: 0.07rem solid $color-border;
 }
 
 .chatbox-center {
@@ -164,12 +164,64 @@ body {
   margin-bottom: 0;
 }
 
-.chat-window-form {
+.chat-window-form,
+.chat-input-form {
   display: flex;
+  flex-direction: column;
   gap: 0.5rem;
   width: 100%;
-  align-items: flex-end;
+  align-items: stretch;
   margin-top: auto;
+}
+
+.chat-input-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.chat-input-row .chat-window {
+  flex: 1 1 auto;
+  margin-bottom: 0;
+  height: 3.5rem;
+  min-height: 3.5rem;
+  max-height: 8.75rem;
+  resize: vertical;
+}
+
+.chat-input-row button[type="submit"],
+.chat-input-togglepdf {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.2rem;
+  font-size: 1.1em;
+  margin-bottom: 0;
+  box-sizing: border-box;
+}
+
+.chat-input-togglepdf {
+  border-radius: 0.375rem;
+  border: none;
+  background: $color-bg-card;
+  color: $color-primary;
+  font-size: 1.7em;
+  font-weight: bold;
+  margin-right: 0.25rem;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  box-shadow: 0 0.0625rem 0.25rem rgba(0,0,0,0.06);
+  outline: none;
+  border: 0.125rem solid transparent;
+}
+.chat-input-togglepdf:hover,
+.chat-input-togglepdf.active {
+  background: $color-primary;
+  color: $color-text-inverse;
+  border: 0.125rem solid $color-primary;
 }
 
 .file-view {
@@ -341,4 +393,70 @@ textarea {
       color: $color-primary-dark;
     }
   }
+}
+
+.pdf-file-drop {
+  border: 0.125rem dashed $color-border;
+  border-radius: 0.5rem;
+  padding: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 11rem;
+  min-height: 2.5rem;
+  cursor: pointer;
+  background: $color-bg-light;
+  transition: border-color 0.2s;
+  color: $color-text-muted;
+
+  &__filename {
+    font-size: 0.95em;
+    color: $color-text;
+  }
+
+  &__placeholder {
+    color: $color-text-muted;
+    font-size: 0.95em;
+  }
+}
+
+.pdf-file-drop.drag-active {
+  border: 0.125rem solid $color-primary;
+  color: $color-primary;
+}
+
+.pdf-file-drop-input {
+  display: none;
+}
+
+.chat-input-form {
+  background: $color-bg-light;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  box-shadow: 0 0.0625rem 0.25rem rgba(0,0,0,0.04);
+  border: 0.07rem solid $color-border;
+}
+
+.chat-input-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+  align-self: flex-end;
+}
+
+.chat-input-pdfdrop {
+  margin-top: 0.5rem;
+  display: flex;
+  width: 100%;
+}
+
+.chat-input-pdfdrop-inner {
+  width: 100%;
+  display: flex;
+}
+
+.chat-input-pdfdrop-inner > .pdf-file-drop {
+  width: 100%;
+  min-height: 3.5rem;
 }
