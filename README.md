@@ -45,6 +45,23 @@ docker compose --env-file .env.dev up --build
 
 Questo comando avvierà tutti i servizi necessari con profilo di dev.
 
+### Avvio dei servizi applicativi
+
+**Backend (BE):**
+```sh
+cd vulcano-be
+python -m flask run
+```
+Il backend sarà disponibile sulla porta **5000**.
+
+**Frontend (FE):**
+```sh
+cd vulcano-fe
+npm install
+npm run dev
+```
+Il frontend sarà disponibile sulla porta **5173**.
+
 ### Utilizzo di MinIO e Qdrant
 
 Per accedere all'interfaccia web di MinIO, apri il browser e vai su:  
