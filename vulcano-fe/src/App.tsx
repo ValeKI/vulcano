@@ -1,12 +1,9 @@
-import './App.css'
+import AppRouter from './routes/AppRouter';
 
 function App() {
-
   return (
-    <>
-      <h1>Hello World! Vulcano!</h1>
-    </>
-  )
+      <AppRouter />
+  );
 }
 
-export default App
+export default App;

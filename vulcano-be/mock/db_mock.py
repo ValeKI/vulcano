@@ -1,0 +1,4 @@
+USERS = {
+    "admin": "1234",
+    "mario": "password",
+}
