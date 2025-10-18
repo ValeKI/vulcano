@@ -1,12 +1,14 @@
 import React from 'react';
 import LoginBox from '../components/LoginBox';
+import VulcanoPage from './VulcanoPage';
 
 const Home: React.FC = () => {
   return (
+    <VulcanoPage>
     <div className="login">
-      <h1>Home</h1>
       <LoginBox />
     </div>
+    </VulcanoPage>
   );
 };
 
