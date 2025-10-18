@@ -1,0 +1,96 @@
+@use './variables' as *;
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+  background: $color-bg;
+  color: $color-text;
+}
+
+
+.card {
+  padding: 2em;
+  background: $color-bg-card;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba($color-bg-hover, 0.15);
+  color: $color-text;
+}
+
+
+.loginbox {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+
+  .box {
+    background: $color-bg-card;
+    padding: 2rem 2.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 16px rgba($color-bg-hover, 0.15);
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  h2 {
+    margin-bottom: 1.5rem;
+    color: $color-text;
+    font-size: 2rem;
+    font-weight: 600;
+  }
+
+  form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .user-input {
+    padding: 0.75em 1em;
+    border-radius: 6px;
+    border: 1px solid $color-bg-hover;
+    background: $color-surface;
+    color: $color-text;
+    font-size: 1em;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .user-input:focus {
+    border-color: $color-primary;
+  }
+
+  button[type="submit"] {
+    background: $color-primary;
+    color: $color-text-inverse;
+    border: none;
+    border-radius: 6px;
+    padding: 0.75em 1em;
+    font-size: 1em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  button[type="submit"]:hover {
+    background: $color-primary-dark;
+  }
+
+  .forgot-btn {
+    background: none;
+    color: $color-text-muted;
+    border: none;
+    font-size: 0.95em;
+    margin-top: 0.5em;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.2s;
+  }
+  .forgot-btn:hover {
+    color: $color-primary;
+  }
+}
