@@ -12,6 +12,6 @@ export const authApi = {
 
 
 export const checkTokenApi = {
-  login: (token: string) =>
+  check: (token: string) =>
     apiClient.post("/auth/check", { token }),
 };
