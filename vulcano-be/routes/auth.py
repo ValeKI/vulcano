@@ -6,6 +6,16 @@ import bcrypt
 from utils.email_utils import send_reset_email
 from datetime import datetime, timedelta, timezone
 from config import CURRENT_CONFIG
+from utils.db.db_user_utils import (
+    get_user_by_username_or_email,
+    get_user_by_email,
+    get_existing_user,
+    insert_user,
+    update_user_password_and_reset_token,
+    update_user_reset_token,
+    get_user_reset_token
+)
+from utils.auth_utils import get_user_from_request
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -18,12 +28,7 @@ def login():
     if not usernameOrEmail or not password:
         return jsonify({"error": "Credenziali mancanti"}), 400
 
-    cur = get_cursor()
-    cur.execute(
-        "SELECT * FROM users WHERE username=%s OR email=%s",
-        (usernameOrEmail, usernameOrEmail)
-    )
-    user = cur.fetchone()
+    user = get_user_by_username_or_email(usernameOrEmail)
     if not user:
         return jsonify({"error": "Credenziali non valide"}), 401
 
@@ -84,23 +89,13 @@ def refresh():
 
 @auth_bp.route("/check", methods=["POST"])
 def check():
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        return jsonify({"error": "Token mancante"}), 401
-
-    token = auth_header.split(" ")[1]  # rimuove 'Bearer '
-    decoded = verify_token(token)
-
-    if not decoded:
-        return jsonify({"error": "Token non valido o scaduto"}), 401
+    user = get_user_from_request()
+    if isinstance(user, tuple):  # Se è una response di errore
+        return user
 
     return jsonify({
         "status": "ok",
-        "user": {
-            "id": decoded["id"],
-            "username": decoded["username"],
-            "email": decoded["email"]
-        }
+        "user": user
     })
 
 @auth_bp.route("/signUp", methods=["POST"])
@@ -113,21 +108,14 @@ def signUp():
     if not email or not password or not username:
         return jsonify({"error": "Dati mancanti"}), 400
 
-    cur = get_cursor()
-    cur.execute("SELECT * FROM users WHERE email=%s OR username=%s", (email, username))
-    existing_user = cur.fetchone()
-
+    existing_user = get_existing_user(email, username)
     if existing_user:
         return jsonify({"error": "Utente già esistente"}), 409
     
     salt = bcrypt.gensalt()
     hashed_pw = bcrypt.hashpw(password.encode(), salt).decode('utf-8')
 
-    cur.execute(
-        "INSERT INTO users (username, email, password) VALUES (%s, %s, %s)",
-        (username, email, hashed_pw)
-    )
-    cur.connection.commit()
+    insert_user(username, email, hashed_pw)
 
     return jsonify({"status": "ok", "user": {"username": username, "email": email}})
 
@@ -138,9 +126,7 @@ def forgot_password():
     if not email:
         return jsonify({"error": "Email mancante"}), 400
 
-    cur = get_cursor()
-    cur.execute("SELECT * FROM users WHERE email=%s", (email,))
-    user = cur.fetchone()
+    user = get_user_by_email(email)
     if not user:
         return jsonify({"status": "ok"}), 200
 
@@ -153,6 +139,7 @@ def forgot_password():
     from config import CURRENT_CONFIG
     reset_token = jwt.encode(payload, CURRENT_CONFIG.SECRET_KEY, algorithm="HS256")
     reset_link = f"{CURRENT_CONFIG.FRONTEND_BASE_URL}/reset-password?token={reset_token}"
+    update_user_reset_token(user["id"], reset_token)
     send_reset_email(email, reset_link)
     return jsonify({"status": "ok"}), 200
 
@@ -175,13 +162,8 @@ def reset_password():
     salt = bcrypt.gensalt()
     hashed_pw = bcrypt.hashpw(new_password.encode(), salt).decode('utf-8')
 
-    cur = get_cursor()
-    result = cur.execute(
-        "UPDATE users SET password=%s, reset_token=NULL WHERE id=%s AND reset_token=%s",
-        (hashed_pw, user_id, token)
-    )
-    if cur.rowcount == 0:
+    rowcount = update_user_password_and_reset_token(user_id, hashed_pw, token)
+    if rowcount == 0:
         return jsonify({"error": "Token non valido"}), 400
 
-    cur.connection.commit()
     return jsonify({"status": "ok"}), 200

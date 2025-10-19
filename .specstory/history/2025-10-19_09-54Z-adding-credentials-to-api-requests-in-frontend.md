@@ -1535,3 +1535,376 @@ Aggiungi un bottone "Indietro" sotto il submit, senza modificare le classi CSS e
 
 ---
 
+_**User (2025-10-19 11:15Z)**_
+
+secondo te le varie query in che file mi conviene salvarle? tipo un "db_utils"  "db_user_utils"?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+Per organizzare meglio il codice, ti conviene creare un file dedicato alle query e operazioni sugli utenti, ad esempio `db_user_utils.py`.  
+Così separi la logica di accesso ai dati dalla logica delle route e mantieni il codice più pulito e riutilizzabile.
+
+**Esempio di struttura consigliata:**
+- `db_user_utils.py`: tutte le query e funzioni che riguardano gli utenti (login, registrazione, reset password, ecc.)
+- `db_utils.py`: funzioni generiche di accesso al database (se ti servono per altre entità).
+
+**Esempio di funzione in `db_user_utils.py`:**
+````python
+from db import get_cursor
+
+def get_user_by_email_or_username(email_or_username):
+    cur = get_cursor()
+    cur.execute(
+        "SELECT * FROM users WHERE username=%s OR email=%s",
+        (email_or_username, email_or_username)
+    )
+    return cur.fetchone()
+
+def update_user_password_and_reset_token(user_id, hashed_pw, token):
+    cur = get_cursor()
+    result = cur.execute(
+        "UPDATE users SET password=%s, reset_token=NULL WHERE id=%s AND reset_token=%s",
+        (hashed_pw, user_id, token)
+    )
+    cur.connection.commit()
+    return cur.rowcount
+# ...altre funzioni...
+````
+
+**Poi nelle route:**
+````python
+from db_user_utils import get_user_by_email_or_username, update_user_password_and_reset_token
+# ...existing code...
+````
+
+**Così il codice è più modulare e facile da mantenere.**
+
+---
+
+_**User (2025-10-19 11:16Z)**_
+
+ok puoi spostare effettivamente le query con cursor che trovi dentro db_user_utils?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [db_user_utils.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/db_user_utils.py)
+
+Crea un nuovo file con tutte le query che usano il cursor per gli utenti.
+
+````python
+from db import get_cursor
+
+def get_user_by_username_or_email(username_or_email):
+    cur = get_cursor()
+    cur.execute(
+        "SELECT * FROM users WHERE username=%s OR email=%s",
+        (username_or_email, username_or_email)
+    )
+    return cur.fetchone()
+
+def get_user_by_email(email):
+    cur = get_cursor()
+    cur.execute("SELECT * FROM users WHERE email=%s", (email,))
+    return cur.fetchone()
+
+def get_existing_user(email, username):
+    cur = get_cursor()
+    cur.execute("SELECT * FROM users WHERE email=%s OR username=%s", (email, username))
+    return cur.fetchone()
+
+def insert_user(username, email, hashed_pw):
+    cur = get_cursor()
+    cur.execute(
+        "INSERT INTO users (username, email, password) VALUES (%s, %s, %s)",
+        (username, email, hashed_pw)
+    )
+    cur.connection.commit()
+
+def update_user_password_and_reset_token(user_id, hashed_pw, token):
+    cur = get_cursor()
+    result = cur.execute(
+        "UPDATE users SET password=%s, reset_token=NULL WHERE id=%s AND reset_token=%s",
+        (hashed_pw, user_id, token)
+    )
+    cur.connection.commit()
+    return cur.rowcount
+
+def update_user_reset_token(user_id, reset_token):
+    cur = get_cursor()
+    cur.execute("UPDATE users SET reset_token=%s WHERE id=%s", (reset_token, user_id))
+    cur.connection.commit()
+
+def get_user_reset_token(user_id):
+    cur = get_cursor()
+    cur.execute("SELECT reset_token FROM users WHERE id=%s", (user_id,))
+    return cur.fetchone()
+````
+
+---
+
+### [auth.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/routes/auth.py)
+
+Sostituisci le query con le chiamate alle funzioni di `db_user_utils`.
+
+````python
+from db_user_utils import (
+    get_user_by_username_or_email,
+    get_user_by_email,
+    get_existing_user,
+    insert_user,
+    update_user_password_and_reset_token,
+    update_user_reset_token,
+    get_user_reset_token
+)
+# ...existing code...
+
+@auth_bp.route("/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    usernameOrEmail = data.get("usernameOrEmail")
+    password = data.get("password")
+
+    if not usernameOrEmail or not password:
+        return jsonify({"error": "Credenziali mancanti"}), 400
+
+    user = get_user_by_username_or_email(usernameOrEmail)
+    if not user:
+        return jsonify({"error": "Credenziali non valide"}), 401
+
+    db_password = user["password"]
+    if isinstance(db_password, str):
+        db_password = db_password.encode()
+
+    try:
+        if not bcrypt.checkpw(password.encode(), db_password):
+            return jsonify({"error": "Credenziali non valide"}), 401
+    except ValueError:
+        return jsonify({"error": "Password non valida nel database"}), 400
+
+    payload = {
+        "id": user["id"],
+        "username": user["username"],
+        "email": user["email"]
+    }
+
+    access_token = generate_access_token(payload)
+    refresh_token = generate_refresh_token(payload)
+
+    response = make_response(jsonify({
+        "token": access_token,
+        "user": {"username": user["username"], "email": user["email"]}
+    }))
+
+    response.set_cookie(
+        "refresh_token",
+        refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="Strict",
+        max_age=60 * 60 * 24 * 7
+    )
+
+    return response
+
+# ...existing code...
+
+@auth_bp.route("/signUp", methods=["POST"])
+def signUp():
+    data = request.get_json()
+    email = data.get("email")
+    password = data.get("password")
+    username = data.get("username")
+
+    if not email or not password or not username:
+        return jsonify({"error": "Dati mancanti"}), 400
+
+    existing_user = get_existing_user(email, username)
+    if existing_user:
+        return jsonify({"error": "Utente già esistente"}), 409
+    
+    salt = bcrypt.gensalt()
+    hashed_pw = bcrypt.hashpw(password.encode(), salt).decode('utf-8')
+
+    insert_user(username, email, hashed_pw)
+
+    return jsonify({"status": "ok", "user": {"username": username, "email": email}})
+
+@auth_bp.route("/forgot-password", methods=["POST"])
+def forgot_password():
+    data = request.get_json()
+    email = data.get("email")
+    if not email:
+        return jsonify({"error": "Email mancante"}), 400
+
+    user = get_user_by_email(email)
+    if not user:
+        return jsonify({"status": "ok"}), 200
+
+    payload = {
+        "id": user["id"],
+        "email": user["email"],
+        "exp": datetime.now(timezone.utc) + timedelta(hours=1)
+    }
+    import jwt
+    from config import CURRENT_CONFIG
+    reset_token = jwt.encode(payload, CURRENT_CONFIG.SECRET_KEY, algorithm="HS256")
+    reset_link = f"{CURRENT_CONFIG.FRONTEND_BASE_URL}/reset-password?token={reset_token}"
+    update_user_reset_token(user["id"], reset_token)
+    send_reset_email(email, reset_link)
+    return jsonify({"status": "ok"}), 200
+
+@auth_bp.route("/reset-password", methods=["POST"])
+def reset_password():
+    data = request.get_json()
+    token = data.get("token")
+    new_password = data.get("new_password")
+    if not token or not new_password:
+        return jsonify({"error": "Token o nuova password mancanti"}), 400
+
+    try:
+        decoded = jwt.decode(token, CURRENT_CONFIG.SECRET_KEY, algorithms=["HS256"])
+        user_id = decoded["id"]
+    except jwt.ExpiredSignatureError:
+        return jsonify({"error": "Token scaduto"}), 400
+    except jwt.InvalidTokenError:
+        return jsonify({"error": "Token non valido"}), 400
+    
+    salt = bcrypt.gensalt()
+    hashed_pw = bcrypt.hashpw(new_password.encode(), salt).decode('utf-8')
+
+    rowcount = update_user_password_and_reset_token(user_id, hashed_pw, token)
+    if rowcount == 0:
+        return jsonify({"error": "Token non valido"}), 400
+
+    return jsonify({"status": "ok"}), 200
+# ...existing code...
+````
+
+---
+
+_**User (2025-10-19 11:16Z)**_
+
+sì mi sembra meglio dai
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+Perfetto!  
+Se vuoi continuare a migliorare la struttura, puoi anche aggiungere funzioni di utilità per altre entità o operazioni nel tuo progetto, seguendo lo stesso approccio modulare.  
+Se hai bisogno di altre ottimizzazioni o vuoi spostare altre query, chiedi pure!
+
+---
+
+_**User (2025-10-19 11:17Z)**_
+
+dentro file py mi serve una nuova rotta che prende per ora in upload il file (application/file)
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [file.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/routes/file.py)
+
+Aggiungi una rotta `/upload` che accetta un file via POST (`multipart/form-data`) e lo salva temporaneamente.
+
+````python
+from flask import Blueprint, request, jsonify
+import os
+
+file_bp = Blueprint("file", __name__)
+
+@file_bp.route("/upload", methods=["POST"])
+def upload_file():
+    if "file" not in request.files:
+        return jsonify({"error": "Nessun file inviato"}), 400
+
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "Nome file mancante"}), 400
+
+    # Salva il file in una cartella temporanea
+    save_path = os.path.join("tmp", file.filename)
+    os.makedirs("tmp", exist_ok=True)
+    file.save(save_path)
+
+    return jsonify({"status": "ok", "filename": file.filename})
+# ...existing code...
+````
+
+---
+
+_**User (2025-10-19 11:23Z)**_
+
+mi serve negli init di postgres una tabella files con file_id, file_name, format). per ora format è sempre pdf ma è qualcosa che non gestisce postgres. file_name non è univoco
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [2_answers.sql](file:///c%3A/Users/demig/Documents/vulcano/vulcano-docker/postgres/init/2_answers.sql)
+
+Aggiungi la tabella `files` con i campi richiesti: `file_id` (PK), `file_name`, `format`.
+
+````sql
+-- ...existing code...
+
+CREATE TABLE files (
+    file_id SERIAL PRIMARY KEY,
+    file_name VARCHAR(255) NOT NULL,
+    format VARCHAR(20) NOT NULL
+);
+````
+
+---
+
+_**User (2025-10-19 11:23Z)**_
+
+serve in un file a parte
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [3_files.sql](file:///c%3A/Users/demig/Documents/vulcano/vulcano-docker/postgres/init/3_files.sql)
+
+Crea un nuovo file per la tabella `files`.
+
+````sql
+CREATE TABLE files (
+    file_id SERIAL PRIMARY KEY,
+    file_name VARCHAR(255) NOT NULL,
+    format VARCHAR(20) NOT NULL
+);
+````
+
+---
+
+_**User (2025-10-19 11:25Z)**_
+
+chi è get_user_reset_token
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+`get_user_reset_token` è una funzione che recupera il valore della colonna `reset_token` per uno specifico utente dal database.
+
+Esempio implementazione (già presente in `db_user_utils.py`):
+
+````python
+def get_user_reset_token(user_id):
+    cur = get_cursor()
+    cur.execute("SELECT reset_token FROM users WHERE id=%s", (user_id,))
+    return cur.fetchone()
+````
+
+Serve se vuoi verificare o leggere il token di reset associato a un utente.  
+Nel file delle route, puoi importarla per usarla dove necessario.
+
+---
+
