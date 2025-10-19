@@ -7,7 +7,8 @@ def db_insert_file(file_name, format, user_id):
         (file_name, format, user_id)
     )
     result = cur.fetchone()
-    return result['id'] if result and 'id' in result else None
+    print(f"Inserted file with ID: {result}")
+    return result['file_id'] if result and 'file_id' in result else None
 
 def file_exists_for_user(filename, user_id):
     cur = get_cursor()
@@ -39,3 +40,12 @@ def list_files_for_user(user_id):
         (user_id,)
     )
     return cur.fetchall()
+
+def get_file_by_id(file_id):
+    cur = get_cursor()
+    cur.execute(
+        "SELECT file_id, file_name, user_id, format FROM files WHERE file_id=%s",
+        (file_id,)
+    )
+    result = cur.fetchone()
+    return result
