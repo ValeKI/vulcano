@@ -69,3 +69,12 @@ Per accedere all'interfaccia web di MinIO, apri il browser e vai su:
 Login:  
 - **Username:** minioadmin  
 - **Password:** minioadmin
+
+## Feature in sviluppo
+
+- Interfaccia frontend responsive ottimizzata per dispositivi mobili
+- Caricamento multiplo di file tramite file ZIP o 7z
+- Supporto al caricamento di file XLSX
+- Importazione di PDF e documenti XLSX da URL Confluence
+- Funzione di ricerca all’interno degli allegati
+- Gestione di ambienti multipli, ciascuno con i propri file dedicati
