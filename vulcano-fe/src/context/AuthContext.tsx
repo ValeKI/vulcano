@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, type FC } from "react";
+import { createContext, useContext, useState, useEffect, type FC } from "react";
 import type { ReactNode } from "react";
 import { checkTokenApi } from "../api/AuthApi";
 import { jwtDecode } from "jwt-decode";
