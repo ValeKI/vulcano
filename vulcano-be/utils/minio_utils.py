@@ -1,6 +1,7 @@
 import os
 from minio import Minio
 from config import CURRENT_CONFIG
+from io import BytesIO
 
 def get_minio_client():
     return Minio(
@@ -10,7 +11,14 @@ def get_minio_client():
         secure=CURRENT_CONFIG.MINIO_SECURE
     )
 
+def ensure_bucket_exists():
+    client = get_minio_client()
+    bucket = CURRENT_CONFIG.MINIO_BUCKET
+    if not client.bucket_exists(bucket):
+        client.make_bucket(bucket)
+
 def create_user_subfolders(user_id):
+    ensure_bucket_exists()
     client = get_minio_client()
     bucket = CURRENT_CONFIG.MINIO_BUCKET
     folders = [
@@ -23,17 +31,24 @@ def create_user_subfolders(user_id):
         client.put_object(bucket, folder, data=b"", length=0)
 
 def upload_user_file(user_id, file_name, file_data):
+    ensure_bucket_exists()
     client = get_minio_client()
     bucket = CURRENT_CONFIG.MINIO_BUCKET
     object_name = f"user/{user_id}/files/{file_name}"
+    # Usa BytesIO per fornire un oggetto file-like
+    file_obj = BytesIO(file_data)
+    file_obj.seek(0, os.SEEK_END)
+    length = file_obj.tell()
+    file_obj.seek(0)
     client.put_object(
         bucket,
         object_name,
-        data=file_data,
-        length=len(file_data)
+        data=file_obj,
+        length=length
     )
 
 def get_user_file(user_id, file_name):
+    ensure_bucket_exists()
     client = get_minio_client()
     bucket = CURRENT_CONFIG.MINIO_BUCKET
     object_name = f"user/{user_id}/files/{file_name}"

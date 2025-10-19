@@ -7,7 +7,7 @@ from utils.minio_utils import upload_user_file, get_user_file
 from utils.auth_utils import get_user_id_from_request
 from utils.db.db_file_utils import list_files_for_user
 
-file_bp = Blueprint("file", __name__)
+file_bp = Blueprint("files", __name__)
 
 @file_bp.route("/upload", methods=["POST"])
 @require_auth

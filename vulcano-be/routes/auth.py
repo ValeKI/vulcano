@@ -93,6 +93,11 @@ def check():
     if isinstance(user, tuple):  # Se è una response di errore
         return user
 
+    # Verifica che l'utente esista a DB
+    db_user = get_user_by_username_or_email(user["username"])
+    if not db_user:
+        return jsonify({"error": "Utente non trovato"}), 404
+
     return jsonify({
         "status": "ok",
         "user": user
