@@ -10,6 +10,13 @@ from utils.qdrant_utils import upload_file_chunks_to_qdrant, get_file_ids_by_use
 
 file_bp = Blueprint("files", __name__)
 
+
+@file_bp.route("/test", methods=["POST"])
+@require_auth
+def test_qdrant_connection_route():
+    #test_qdrant_connection()
+    return jsonify({"status": "ok"})
+
 @file_bp.route("/upload", methods=["POST"])
 @require_auth
 def upload_file():

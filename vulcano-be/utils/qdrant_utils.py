@@ -4,31 +4,34 @@ import uuid
 from config import CURRENT_CONFIG
 from io import BytesIO
 import PyPDF2
+from utils.db.db_file_utils import get_file_by_id
 
-def upload_file_chunks_to_qdrant(user_id, file_id, file_name, file_content, chunk_size=1024, collection_name="files", file_name=None):
-    client = QdrantClient(
-        host=CURRENT_CONFIG.QDRANT_HOST,
-        port=CURRENT_CONFIG.QDRANT_PORT,
-        timeout=300.0
-    )
-    # Check if collection exists, create if not
-    if collection_name not in [c.name for c in client.get_collections().collections]:
+def upload_file_chunks_to_qdrant(user_id, file_id, file_name, file_content, chunk_size=1024, collection_name="files"):
+    print(f"[QDRANT] upload_file_chunks_to_qdrant: user_id={user_id}, file_id={file_id}, file_name={file_name}")
+    client = QdrantClient(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT, timeout=30.0)
+    collections = [c.name for c in client.get_collections().collections]
+    print(f"[QDRANT] Existing collections: {collections}")
+    if collection_name not in collections:
+        print(f"[QDRANT] Creating collection: {collection_name}")
         client.create_collection(
             collection_name=collection_name,
             vectors_config={"size": 1, "distance": "Cosine"}
         )
-    # Se file_content è file-like, leggilo
     if hasattr(file_content, "read"):
+        print("[QDRANT] Reading file_content from file-like object")
         file_content = file_content.read()
-    # Se il file è un PDF, estrai il testo
     if file_name and file_name.lower().endswith(".pdf"):
+        print("[QDRANT] Extracting text from PDF")
         file_content = extract_pdf_text(file_content)
-        print(file_content)  # Se qui vedi caratteri strani, il problema è nel PDF
-    # Se file_content è bytes, decodifica in stringa
+        print(f"[QDRANT] PDF text length: {len(file_content)}")
     if isinstance(file_content, bytes):
+        print("[QDRANT] Decoding file_content from bytes to string")
         file_content = file_content.decode("utf-8", errors="replace")
+    print(f"[QDRANT] Content length: {len(file_content)}")
     chunks = [file_content[i:i+chunk_size] for i in range(0, len(file_content), chunk_size)]
+    print(f"[QDRANT] Chunks to upload: {len(chunks)}")
     if not chunks:
+        print("[QDRANT] No chunks to upload (file vuoto?)")
         return 0
     points = []
     for idx, chunk in enumerate(chunks):
@@ -37,18 +40,20 @@ def upload_file_chunks_to_qdrant(user_id, file_id, file_name, file_content, chun
             "user_id": user_id,
             "file_id": file_id,
             "chunk_index": idx,
-            "content": chunk,  # chunk effettivo del file
+            "content": chunk,
             "answer_ids": []
         }
         points.append(PointStruct(id=point_id, vector=[0.0], payload=payload))
-    # Invia i punti in batch per evitare il limite di payload
     batch_size = 1000
     for i in range(0, len(points), batch_size):
+        print(f"[QDRANT] Upserting batch {i//batch_size+1} ({i}:{i+batch_size})")
         client.upsert(collection_name=collection_name, points=points[i:i+batch_size])
+    print(f"[QDRANT] Uploaded {len(points)} chunks for file_id={file_id}")
     return len(points)
 
 def get_file_ids_by_answer_id(answer_id, collection_name="files"):
-    client = QdrantClient(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT)
+    print(f"[QDRANT] get_file_ids_by_answer_id: {answer_id}")
+    client = QdrantClient(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT, timeout=30.0)
     query = {
         "must": [
             {
@@ -61,10 +66,12 @@ def get_file_ids_by_answer_id(answer_id, collection_name="files"):
     file_ids = set()
     for point in results[0]:
         file_ids.add(point.payload["file_id"])
+    print(f"[QDRANT] Found file_ids: {list(file_ids)}")
     return list(file_ids)
 
 def get_file_ids_by_user_id(user_id, collection_name="files"):
-    client = QdrantClient(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT)
+    print(f"[QDRANT] get_file_ids_by_user_id: {user_id}")
+    client = QdrantClient(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT, timeout=30.0)
     query = {
         "must": [
             {
@@ -77,11 +84,20 @@ def get_file_ids_by_user_id(user_id, collection_name="files"):
     file_ids = set()
     for point in results[0]:
         file_ids.add(point.payload["file_id"])
+    print(f"[QDRANT] Found file_ids: {list(file_ids)}")
     return list(file_ids)
 
 def extract_pdf_text(file_content):
-    reader = PyPDF2.PdfReader(BytesIO(file_content))
+    print("[QDRANT] extract_pdf_text")
+    if isinstance(file_content, BytesIO):
+        pdf_stream = file_content
+    else:
+        pdf_stream = BytesIO(file_content)
+    reader = PyPDF2.PdfReader(pdf_stream)
     text = ""
     for page in reader.pages:
-        text += page.extract_text() or ""
+        page_text = page.extract_text() or ""
+        print(f"[QDRANT] Extracted {len(page_text)} chars from page")
+        text += page_text
+    print(f"[QDRANT] Total extracted text length: {len(text)}")
     return text
