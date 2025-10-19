@@ -1,8 +1,12 @@
 import React, { useState } from "react";
 import PdfFileDrop from "./PdfFileDrop";
-import { uploadFile } from "../api/FileApi";
+import { uploadFile } from "../services/FileService";
 
-const ChatInput: React.FC = () => {
+interface ChatInputProps {
+    onHandlePdfSelect?: (file: File | null) => void;
+}
+
+const ChatInput: React.FC<ChatInputProps> = ({onHandlePdfSelect}) => {
     const [input, setInput] = useState("");
     const [pdfFile, setPdfFile] = useState<File | null>(null);
     const [showPdfDrop, setShowPdfDrop] = useState(false);
@@ -50,6 +54,7 @@ const ChatInput: React.FC = () => {
                 setTimeout(() => setLoadingPercent(0), 500);
                 setPdfFile(null);
                 setShowPdfDrop(false);
+                onHandlePdfSelect && onHandlePdfSelect(file);
             } catch (e) {
                 clearTimeout(timeout);
                 clearInterval(progressInterval);

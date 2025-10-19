@@ -17,7 +17,18 @@ export const uploadFile = async (payload: UploadFilePayload) => {
   return response.data;
 };
 
-export const getUserFiles = async () => {
-  const response = await apiClient.get("/files/user", { withCredentials: true });
+export interface UserFile {
+  file_id: number;
+  file_name: string;
+  format: string;
+  user_id: number;
+}
+
+export interface GetUserFilesResponse {
+  files: UserFile[];
+}
+
+export const getUserFiles = async (): Promise<GetUserFilesResponse> => {
+  const response = await apiClient.get("/files/list", { withCredentials: true });
   return response.data;
 };
