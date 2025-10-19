@@ -51,16 +51,6 @@ services:
     networks:
       - backend
 
-  mc:
-    build:
-      context: ./mc
-    container_name: mc_container
-    depends_on:
-      - minio
-    restart: on-failure
-    networks:
-      - backend
-
   mailhog:
     image: mailhog/mailhog
     container_name: mailhog_container
