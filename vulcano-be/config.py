@@ -5,6 +5,7 @@ load_dotenv()
 
 class BaseConfig:
     SECRET_KEY = os.getenv("SECRET_KEY")
+    REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY")
     DB_HOST = os.getenv("DB_HOST")
     DB_PORT = int(os.getenv("DB_PORT", 5432))
     DB_NAME = os.getenv("DB_NAME")
