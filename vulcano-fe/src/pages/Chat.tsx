@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import DocumentList from '../components/DocumentList';
 import ChatInput from '../components/ChatInput';
 import ChatResponse from '../components/ChatResponse';
-import AnswerList from '../components/AnswerList';
+import QuestionList from '../components/QuestionList';
 import VulcanoPage from './VulcanoPage';
 import { getUserFiles } from '../services/FileService';
 import { type DocumentListFile } from '../components/DocumentList';
+import { type Question } from '../services/ChatService';
+import { getQuestionsByUserId, type GetQuestionsByUserIdResponse } from '../api/ChatApi';
 
 
 const Chat: React.FC = () => {
@@ -26,6 +28,12 @@ const Chat: React.FC = () => {
     }
   };
 
+  const [listQuestions, setListQuestions] = useState<Question[]>([]);
+
+  const handleQuestionSubmit = async () => {
+    const res: GetQuestionsByUserIdResponse = await getQuestionsByUserId();
+    setListQuestions(res.questions);
+  };
 
   return (
     <VulcanoPage>
@@ -38,11 +46,11 @@ const Chat: React.FC = () => {
             <ChatResponse text="Example response text" />
           </div>
           <div className="chatbox-chatwindow">
-            <ChatInput onHandlePdfSelect={handlePdfSelect} />
+            <ChatInput onHandlePdfSelect={handlePdfSelect} onQuestionSubmit={handleQuestionSubmit}/>
           </div>
         </div>
         <div className="chatbox-right">
-          <AnswerList />
+          <QuestionList questionList={listQuestions}/>
         </div>
       </div>
     </VulcanoPage>

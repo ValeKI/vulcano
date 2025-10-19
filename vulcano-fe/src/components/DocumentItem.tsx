@@ -5,7 +5,7 @@ import DownloadIcon from "../assets/download.png";
 import FileIcon from "../assets/file.png";
 import QuestionMarkIcon from "../assets/question-mark.png";
 
-type DocumentItemType = "file" | "answer";
+type DocumentItemType = "file" | "question";
 
 interface DocumentItemProps {
   name: string;
@@ -28,8 +28,8 @@ const DocumentItem: React.FC<DocumentItemProps> = ({
         className="file-icon cursor-pointer"
         onClick={onView}>
         <img
-          src={type === "answer" ? QuestionMarkIcon : FileIcon}
-          alt={type === "answer" ? "Answer" : "File"}
+          src={type === "question" ? QuestionMarkIcon : FileIcon}
+          alt={name}
         />
       </div>
 
