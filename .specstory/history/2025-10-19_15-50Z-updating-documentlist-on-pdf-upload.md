@@ -41,7 +41,7 @@ const Chat: React.FC = () => (
         </div>
       </div>
       <div className="chatbox-right">
-        <AnswerList />
+        <QuestionList />
       </div>
     </div>
   </VulcanoPage>
@@ -402,6 +402,334 @@ const DocumentList: React.FC<DocumentListProps> = ({ listFiles = [] }) => {
 
     // ...existing code...
 }
+````
+
+---
+
+_**User (2025-10-19 16:25Z)**_
+
+tenendo conto CREATE TABLE questions (
+    id SERIAL PRIMARY KEY,
+    conversation_id INT NOT NULL,
+    user_id INT NOT NULL,
+    content_file_id VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+crea due metodi:
+get question by id
+list question by user id
+insert question
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [db_question_utils.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/utils/db/db_question_utils.py)
+
+Aggiungi tre funzioni: `get_question_by_id`, `list_questions_by_user_id`, `insert_question`.
+
+````python
+import psycopg2
+from typing import Optional, List, Dict
+
+def get_question_by_id(conn, question_id: int) -> Optional[Dict]:
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT id, conversation_id, user_id, content_file_id, created_at
+            FROM questions
+            WHERE id = %s
+        """, (question_id,))
+        row = cur.fetchone()
+        if row:
+            return {
+                "id": row[0],
+                "conversation_id": row[1],
+                "user_id": row[2],
+                "content_file_id": row[3],
+                "created_at": row[4]
+            }
+        return None
+
+def list_questions_by_user_id(conn, user_id: int) -> List[Dict]:
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT id, conversation_id, user_id, content_file_id, created_at
+            FROM questions
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+        """, (user_id,))
+        rows = cur.fetchall()
+        return [
+            {
+                "id": row[0],
+                "conversation_id": row[1],
+                "user_id": row[2],
+                "content_file_id": row[3],
+                "created_at": row[4]
+            }
+            for row in rows
+        ]
+
+def insert_question(conn, conversation_id: int, user_id: int, content_file_id: Optional[str]) -> int:
+    with conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO questions (conversation_id, user_id, content_file_id)
+            VALUES (%s, %s, %s)
+            RETURNING id
+        """, (conversation_id, user_id, content_file_id))
+        question_id = cur.fetchone()[0]
+        conn.commit()
+        return question_id
+````
+
+---
+
+_**User (2025-10-19 16:25Z)**_
+
+nell'insert voglio il commit
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [db_question_utils.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/utils/db/db_question_utils.py)
+
+Il commit è già presente subito dopo l'insert nella funzione `insert_question`.
+
+````python
+# ...existing code...
+def insert_question(conn, conversation_id: int, user_id: int, content_file_id: Optional[str]) -> int:
+    with conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO questions (conversation_id, user_id, content_file_id)
+            VALUES (%s, %s, %s)
+            RETURNING id
+        """, (conversation_id, user_id, content_file_id))
+        question_id = cur.fetchone()[0]
+        conn.commit()  # Il commit è già qui
+        return question_id
+# ...existing code...
+````
+
+---
+
+_**User (2025-10-19 16:27Z)**_
+
+ora in chat.py mi servono degli endpoint che mi fanno fare le operazioni che hai messo in db_question_util
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [chat.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/routes/chat.py)
+
+Aggiungi gli endpoint REST per:
+- ottenere una domanda per id (`GET /questions/<id>`)
+- ottenere tutte le domande di un utente (`GET /questions/user/<user_id>`)
+- inserire una domanda (`POST /questions`)
+
+````python
+from flask import Blueprint, request, jsonify
+from utils.db.db_question_utils import (
+    get_question_by_id,
+    list_questions_by_user_id,
+    insert_question
+)
+from utils.db.db import get_db
+
+chat_bp = Blueprint('chat', __name__)
+
+@chat_bp.route('/questions/<int:question_id>', methods=['GET'])
+def api_get_question_by_id(question_id):
+    conn = get_db()
+    question = get_question_by_id(conn, question_id)
+    if question:
+        return jsonify(question)
+    return jsonify({"error": "Question not found"}), 404
+
+@chat_bp.route('/questions/user/<int:user_id>', methods=['GET'])
+def api_list_questions_by_user_id(user_id):
+    conn = get_db()
+    questions = list_questions_by_user_id(conn, user_id)
+    return jsonify({"questions": questions})
+
+@chat_bp.route('/questions', methods=['POST'])
+def api_insert_question():
+    data = request.json
+    conversation_id = data.get('conversation_id')
+    user_id = data.get('user_id')
+    content_file_id = data.get('content_file_id')
+    if not conversation_id or not user_id:
+        return jsonify({"error": "Missing required fields"}), 400
+    conn = get_db()
+    question_id = insert_question(conn, conversation_id, user_id, content_file_id)
+    return jsonify({"id": question_id})
+# ...existing code...
+````
+
+---
+
+_**User (2025-10-19 16:28Z)**_
+
+questo  conn = get_db() non deve stare qui
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [chat.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/routes/chat.py)
+
+Importa `get_db` e sposta la chiamata all'interno di ogni funzione endpoint.
+
+````python
+from flask import Blueprint, request, jsonify
+from utils.db.db_question_utils import (
+    get_question_by_id,
+    list_questions_by_user_id,
+    insert_question
+)
+from utils.db.db import get_db
+
+chat_bp = Blueprint('chat', __name__)
+
+@chat_bp.route('/questions/<int:question_id>', methods=['GET'])
+def api_get_question_by_id(question_id):
+    conn = get_db()
+    question = get_question_by_id(conn, question_id)
+    if question:
+        return jsonify(question)
+    return jsonify({"error": "Question not found"}), 404
+
+@chat_bp.route('/questions/user/<int:user_id>', methods=['GET'])
+def api_list_questions_by_user_id(user_id):
+    conn = get_db()
+    questions = list_questions_by_user_id(conn, user_id)
+    return jsonify({"questions": questions})
+
+@chat_bp.route('/questions', methods=['POST'])
+def api_insert_question():
+    data = request.json
+    conversation_id = data.get('conversation_id')
+    user_id = data.get('user_id')
+    content_file_id = data.get('content_file_id')
+    if not conversation_id or not user_id:
+        return jsonify({"error": "Missing required fields"}), 400
+    conn = get_db()
+    question_id = insert_question(conn, conversation_id, user_id, content_file_id)
+    return jsonify({"id": question_id})
+# ...existing code...
+````
+
+---
+
+_**User (2025-10-19 16:29Z)**_
+
+conn = get_db() deve stare in db_question_util
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [chat.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/routes/chat.py)
+
+Rimuovi tutte le chiamate a `get_db()` dagli endpoint e passa nessun parametro (o None) alle funzioni di utilità.  
+Sposta la logica di connessione dentro le funzioni in `db_question_utils.py`.
+
+````python
+from flask import Blueprint, request, jsonify
+from utils.db.db_question_utils import (
+    get_question_by_id,
+    list_questions_by_user_id,
+    insert_question
+)
+# ...existing code...
+
+@chat_bp.route('/questions/<int:question_id>', methods=['GET'])
+def api_get_question_by_id(question_id):
+    question = get_question_by_id(question_id)
+    if question:
+        return jsonify(question)
+    return jsonify({"error": "Question not found"}), 404
+
+@chat_bp.route('/questions/user/<int:user_id>', methods=['GET'])
+def api_list_questions_by_user_id(user_id):
+    questions = list_questions_by_user_id(user_id)
+    return jsonify({"questions": questions})
+
+@chat_bp.route('/questions', methods=['POST'])
+def api_insert_question():
+    data = request.json
+    conversation_id = data.get('conversation_id')
+    user_id = data.get('user_id')
+    content_file_id = data.get('content_file_id')
+    if not conversation_id or not user_id:
+        return jsonify({"error": "Missing required fields"}), 400
+    question_id = insert_question(conversation_id, user_id, content_file_id)
+    return jsonify({"id": question_id})
+# ...existing code...
+````
+
+### [db_question_utils.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/utils/db/db_question_utils.py)
+
+Importa `get_db` e crea la connessione all'interno di ogni funzione.
+
+````python
+from utils.db.db import get_db
+# ...existing code...
+
+def get_question_by_id(question_id: int):
+    conn = get_db()
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT id, conversation_id, user_id, content_file_id, created_at
+            FROM questions
+            WHERE id = %s
+        """, (question_id,))
+        row = cur.fetchone()
+        if row:
+            return {
+                "id": row[0],
+                "conversation_id": row[1],
+                "user_id": row[2],
+                "content_file_id": row[3],
+                "created_at": row[4]
+            }
+        return None
+
+def list_questions_by_user_id(user_id: int):
+    conn = get_db()
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT id, conversation_id, user_id, content_file_id, created_at
+            FROM questions
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+        """, (user_id,))
+        rows = cur.fetchall()
+        return [
+            {
+                "id": row[0],
+                "conversation_id": row[1],
+                "user_id": row[2],
+                "content_file_id": row[3],
+                "created_at": row[4]
+            }
+            for row in rows
+        ]
+
+def insert_question(conversation_id: int, user_id: int, content_file_id):
+    conn = get_db()
+    with conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO questions (conversation_id, user_id, content_file_id)
+            VALUES (%s, %s, %s)
+            RETURNING id
+        """, (conversation_id, user_id, content_file_id))
+        question_id = cur.fetchone()[0]
+        conn.commit()
+        return question_id
+# ...existing code...
 ````
 
 ---

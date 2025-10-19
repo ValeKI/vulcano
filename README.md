@@ -78,3 +78,4 @@ Login:
 - Importazione di PDF e documenti XLSX da URL Confluence
 - Funzione di ricerca all’interno degli allegati
 - Gestione di ambienti multipli, ciascuno con i propri file dedicati
+- titolo alle domande richieste in chat

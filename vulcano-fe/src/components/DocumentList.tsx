@@ -14,10 +14,6 @@ interface DocumentListProps {
 }
 
 const DocumentList: React.FC<DocumentListProps> = ({ listFiles = [] }) => {
-    useEffect(() => {
-        console.log('listFiles aggiornato:', listFiles);
-    }, [listFiles]);
-
     const onViewFile = (fileName: string) => {
         console.log(`Viewing file: ${fileName}`);
     }
