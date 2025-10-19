@@ -1,17 +1,19 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import "../styles/main.scss";
 import { LoginService } from "../services/LoginService";
 import { useAuth } from "../context/AuthContext";
+import SignUpBox from "../components/SignUpBox";
+import ForgotPasswordBox from "../components/ForgotPasswordBox";
 
 const LoginBox: React.FC = () => {
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showSignUp, setShowSignUp] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
 
   const { login } = useAuth();
-  const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -22,8 +24,6 @@ const LoginBox: React.FC = () => {
       const token = await LoginService.login({ usernameOrEmail, password });
 
       login(token);
-
-      navigate("/chat");
     } catch (err: any) {
       console.error("Login failed:", err);
       setError(typeof err === "string" ? err : "Credenziali non valide");
@@ -31,6 +31,14 @@ const LoginBox: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (showSignUp) {
+    return <SignUpBox onBack={() => setShowSignUp(false)} />;
+  }
+
+  if (showForgot) {
+    return <ForgotPasswordBox onBack={() => setShowForgot(false)} />;
+  }
 
   return (
     <div className="loginbox">
@@ -61,8 +69,21 @@ const LoginBox: React.FC = () => {
 
         {error && <p style={{ color: "red", marginTop: "1rem" }}>{error}</p>}
 
-        <button type="button" className="forgot-btn">
+        <button
+          type="button"
+          className="forgot-btn"
+          onClick={() => setShowForgot(true)}
+        >
           Password dimenticata?
+        </button>
+
+        <button
+          type="button"
+          className="forgot-btn"
+          style={{ marginTop: "0.5rem" }}
+          onClick={() => setShowSignUp(true)}
+        >
+          Registrati
         </button>
       </div>
     </div>

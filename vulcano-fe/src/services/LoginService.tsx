@@ -17,4 +17,12 @@ export const LoginService = {
       throw error.response?.data?.error || "Errore sconosciuto";
     }
   },
+  signUp: async (username: string, email: string, password: string): Promise<void> => {
+    try {
+      await authApi.signUp({ username, email, password });
+    } catch (error: any) {
+      console.error("Errore registrazione:", error);
+      throw error.response?.data?.error || "Errore sconosciuto";
+    }
+  }
 };
