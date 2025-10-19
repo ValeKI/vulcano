@@ -29,7 +29,9 @@ const Chat: React.FC = () => {
         setListDocuments(mappedFiles);
 
         const questionsRes: GetQuestionsByUserIdResponse = await getQuestionsByUserId();
-        setListQuestions(questionsRes.questions);
+        // Ordina per id crescente
+        const sortedQuestions = [...questionsRes.questions].sort((a, b) => a.id - b.id);
+        setListQuestions(sortedQuestions);
       } catch (e) {
         console.error("Errore nel caricamento iniziale:", e);
       }
@@ -88,7 +90,10 @@ const Chat: React.FC = () => {
 
     setAnswer(answerText);
     setQuestion(question);
-    setListQuestions(res.questions);
+
+    // Ordina per id crescente
+    const sortedQuestions = [...res.questions].sort((a, b) => a.id - b.id);
+    setListQuestions(sortedQuestions);
 
     setListDocuments(prevDocs =>
       prevDocs.map(doc => ({
