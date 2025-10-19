@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DocumentList from '../components/DocumentList';
 import ChatInput from '../components/ChatInput';
 import ChatResponse from '../components/ChatResponse';
@@ -12,6 +12,30 @@ import { getQuestionsByUserId, type GetQuestionsByUserIdResponse, type InsertQue
 
 const Chat: React.FC = () => {
   const [listDocuments, setListDocuments] = useState<DocumentListFile[]>([]);
+  const [listQuestions, setListQuestions] = useState<Question[]>([]);
+  const [answer, setAnswer] = useState<string>("");
+  const [question, setQuestion] = useState<string>("");
+
+  // Carica i file e le domande all'ingresso nella pagina
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const filesRes = await getUserFiles();
+        const mappedFiles: DocumentListFile[] = filesRes.files.map(f => ({
+          ...f,
+          selectByAnswer: false
+        }));
+        setListDocuments(mappedFiles);
+
+        const questionsRes: GetQuestionsByUserIdResponse = await getQuestionsByUserId();
+        setListQuestions(questionsRes.questions);
+      } catch (e) {
+        console.error("Errore nel caricamento iniziale:", e);
+      }
+    };
+    fetchInitialData();
+  }, []);
+
   const handlePdfSelect = async (file: File | null) => {
     if (file) {
       try {
@@ -28,13 +52,17 @@ const Chat: React.FC = () => {
     }
   };
 
-  const [listQuestions, setListQuestions] = useState<Question[]>([]);
-
-  const [answer, setAnswer] = useState<string>("");
-  const [question, setQuestion] = useState<Question | null>(null);
   const handleQuestionSubmit = async ({ question, answer, file_ids }: InsertQuestionResponse) => {
     const res: GetQuestionsByUserIdResponse = await getQuestionsByUserId();
-    setAnswer(answer);
+
+    console.log("Domanda inviata:", question);
+
+    // Fix: usa optional chaining per evitare errori se answer non è un oggetto
+    const answerText = (answer && typeof answer === "object" && "answer" in answer)
+      ? (answer as any).answer
+      : answer;
+
+    setAnswer(answerText);
     setQuestion(question);
     setListQuestions(res.questions);
 
@@ -57,7 +85,7 @@ const Chat: React.FC = () => {
         </div>
         <div className="chatbox-center">
           <div className="chatbox-responsewindow">
-            <ChatResponse text="Example response text" />
+            <ChatResponse questionText={question} answerText={answer} />
           </div>
           <div className="chatbox-chatwindow">
             <ChatInput onHandlePdfSelect={handlePdfSelect} onQuestionSubmit={handleQuestionSubmit}/>
