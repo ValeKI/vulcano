@@ -19,7 +19,9 @@ export interface GetQuestionsByUserIdResponse {
 }
 
 export interface InsertQuestionResponse {
-  id: number;
+  question: Question;
+  answer: string;
+  file_ids: number[];
 }
 
 export const getQuestionById = async (questionId: number): Promise<GetQuestionByIdResponse> => {

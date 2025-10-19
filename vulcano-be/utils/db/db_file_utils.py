@@ -44,7 +44,7 @@ def count_files_with_base_name(base_name, ext, user_id):
 def list_files_for_user(user_id):
     cur = get_cursor()
     cur.execute(
-        "SELECT file_name, format FROM files WHERE user_id=%s",
+        "SELECT file_id, file_name, format FROM files WHERE user_id=%s",
         (user_id,)
     )
     return cur.fetchall()
