@@ -1,7 +1,12 @@
 import React, { useState } from "react";
 import PdfFileDrop from "./PdfFileDrop";
+import { uploadFile } from "../services/FileService";
 
-const ChatInput: React.FC = () => {
+interface ChatInputProps {
+    onHandlePdfSelect?: (file: File | null) => void;
+}
+
+const ChatInput: React.FC<ChatInputProps> = ({onHandlePdfSelect}) => {
     const [input, setInput] = useState("");
     const [pdfFile, setPdfFile] = useState<File | null>(null);
     const [showPdfDrop, setShowPdfDrop] = useState(false);
@@ -9,30 +14,55 @@ const ChatInput: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        // Invia solo la domanda, mai il PDF
         if (input.trim()) {
             console.log("Domanda inviata:", input);
-            if (pdfFile) {
-                console.log("PDF allegato:", pdfFile.name);
-            }
             setInput("");
-            setPdfFile(null);
-            setShowPdfDrop(false);
-            setLoadingPercent(0);
         }
     };
 
     const handlePdfSelect = async (file: File | null) => {
         if (file) {
             setLoadingPercent(1);
-            // Simula caricamento con percentuale
-            for (let i = 1; i <= 100; i += 5) {
-                await new Promise((res) => setTimeout(res, 20));
-                setLoadingPercent(i);
+            let percent = 1;
+            let completed = false;
+            let error = false;
+
+            // Timer per timeout di 2 minuti
+            const timeout = setTimeout(() => {
+                setLoadingPercent(0);
+                setPdfFile(null);
+                setShowPdfDrop(false);
+                error = true;
+                alert("Errore: caricamento file troppo lento o fallito.");
+            }, 2 * 60 * 1000);
+
+            // Simula avanzamento percentuale fino al 98%
+            const progressInterval = setInterval(() => {
+                if (percent < 98 && !completed && !error) {
+                    percent += 2;
+                    setLoadingPercent(percent);
+                }
+            }, 400); // 400ms * 49 = ~20s
+
+            try {
+                await uploadFile({ file });
+                completed = true;
+                clearTimeout(timeout);
+                clearInterval(progressInterval);
+                setLoadingPercent(100);
+                setTimeout(() => setLoadingPercent(0), 500);
+                setPdfFile(null);
+                setShowPdfDrop(false);
+                onHandlePdfSelect && onHandlePdfSelect(file);
+            } catch (e) {
+                clearTimeout(timeout);
+                clearInterval(progressInterval);
+                setLoadingPercent(0);
+                setPdfFile(null);
+                setShowPdfDrop(false);
+                alert("Errore durante il caricamento del file.");
             }
-            console.log("PDF selezionato:", file.name);
-            setPdfFile(file);
-            setShowPdfDrop(false);
-            setLoadingPercent(0);
         }
     };
 

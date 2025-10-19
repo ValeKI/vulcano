@@ -1,0 +1,34 @@
+import { apiClient } from "./ApiClient";
+export interface UploadFilePayload {
+  file: File;
+}
+
+export const uploadFile = async (payload: UploadFilePayload) => {
+  const formData = new FormData();
+  formData.append("file", payload.file);
+
+  const response = await apiClient.post("/files/upload", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+    withCredentials: true
+  });
+
+  return response.data;
+};
+
+export interface UserFile {
+  file_id: number;
+  file_name: string;
+  format: string;
+  user_id: number;
+}
+
+export interface GetUserFilesResponse {
+  files: UserFile[];
+}
+
+export const getUserFiles = async (): Promise<GetUserFilesResponse> => {
+  const response = await apiClient.get("/files/list", { withCredentials: true });
+  return response.data;
+};

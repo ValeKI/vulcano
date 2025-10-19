@@ -18,6 +18,13 @@ class BaseConfig:
     SMTP_PORT = int(os.environ.get("SMTP_PORT", 1025))
     FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL")
     SMTP_SSL = os.environ.get("SMTP_SSL", "False").lower() == "true"
+    MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
+    MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
+    MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
+    MINIO_SECURE = os.getenv("MINIO_SECURE") == "true"
+    MINIO_BUCKET = os.getenv("MINIO_BUCKET")
+    QDRANT_HOST = os.getenv("QDRANT_HOST")
+    QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
 
 class DevelopmentConfig(BaseConfig):
     DEBUG = True
