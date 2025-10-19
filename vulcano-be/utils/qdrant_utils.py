@@ -101,3 +101,37 @@ def extract_pdf_text(file_content):
         text += page_text
     print(f"[QDRANT] Total extracted text length: {len(text)}")
     return text
+
+def add_answer_id_to_file_chunks(file_id, answer_id, collection_name="files"):
+    """
+    Aggiorna tutti i chunk di un file su Qdrant aggiungendo l'answer_id in answer_ids.
+    """
+    print(f"[QDRANT] add_answer_id_to_file_chunks: file_id={file_id}, answer_id={answer_id}")
+    client = QdrantClient(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT, timeout=30.0)
+    query = {
+        "must": [
+            {
+                "key": "file_id",
+                "match": {"value": file_id}
+            }
+        ]
+    }
+    results = client.scroll(collection_name=collection_name, scroll_filter=query, limit=1000)
+    points_to_update = []
+    for point in results[0]:
+        payload = point.payload
+        answer_ids = payload.get("answer_ids", [])
+        if answer_id not in answer_ids:
+            answer_ids.append(answer_id)
+            payload["answer_ids"] = answer_ids
+            # Assicurati che il vettore sia una lista di float (es: [0.0])
+            vector = getattr(point, "vector", None)
+            if vector is None:
+                vector = [0.0]
+            points_to_update.append(PointStruct(id=point.id, vector=vector, payload=payload))
+    if points_to_update:
+        client.upsert(collection_name=collection_name, points=points_to_update)
+        print(f"[QDRANT] Updated {len(points_to_update)} chunks for file_id={file_id} with answer_id={answer_id}")
+    else:
+        print(f"[QDRANT] No chunks to update for file_id={file_id}")
+    return len(points_to_update)

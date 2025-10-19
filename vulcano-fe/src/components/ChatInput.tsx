@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import PdfFileDrop from "./PdfFileDrop";
 import { uploadFile } from "../services/FileService";
-import { insertQuestion } from "../services/ChatService";
+import { insertQuestion, type InsertQuestionResponse } from "../services/ChatService";
 
 interface ChatInputProps {
     onHandlePdfSelect?: (file: File | null) => void;
-    onQuestionSubmit?: (question: number) => void;
+    onQuestionSubmit?: (data: InsertQuestionResponse) => void;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({onHandlePdfSelect, onQuestionSubmit}) => {
@@ -20,8 +20,9 @@ const ChatInput: React.FC<ChatInputProps> = ({onHandlePdfSelect, onQuestionSubmi
         if (input.trim()) {
             const res = await insertQuestion({ content: input });
             console.log("Domanda inviata:", input);
+            console.log("Risposta ricevuta:", res);
             setInput("");
-            onQuestionSubmit && onQuestionSubmit(res.id);
+            onQuestionSubmit && onQuestionSubmit(res);
         }
     };
 

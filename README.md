@@ -72,10 +72,11 @@ Login:
 
 ## Feature in sviluppo
 
+- Generazione automatica di un titolo riassuntivo tramite AI per ogni domanda inviata nella chat
+- Gestione di domande e risposte di grandi dimensioni: se il contenuto supera una certa soglia, viene salvato come file su MinIO e indicizzato su Qdrant per facilitarne la ricerca e il recupero
 - Interfaccia frontend responsive ottimizzata per dispositivi mobili
 - Caricamento multiplo di file tramite file ZIP o 7z
 - Supporto al caricamento di file XLSX
 - Importazione di PDF e documenti XLSX da URL Confluence
 - Funzione di ricerca all’interno degli allegati
 - Gestione di ambienti multipli, ciascuno con i propri file dedicati
-- titolo alle domande richieste in chat

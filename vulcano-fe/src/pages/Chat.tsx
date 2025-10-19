@@ -7,7 +7,7 @@ import VulcanoPage from './VulcanoPage';
 import { getUserFiles } from '../services/FileService';
 import { type DocumentListFile } from '../components/DocumentList';
 import { type Question } from '../services/ChatService';
-import { getQuestionsByUserId, type GetQuestionsByUserIdResponse } from '../api/ChatApi';
+import { getQuestionsByUserId, type GetQuestionsByUserIdResponse, type InsertQuestionResponse } from '../api/ChatApi';
 
 
 const Chat: React.FC = () => {
@@ -30,9 +30,23 @@ const Chat: React.FC = () => {
 
   const [listQuestions, setListQuestions] = useState<Question[]>([]);
 
-  const handleQuestionSubmit = async () => {
+  const [answer, setAnswer] = useState<string>("");
+  const [question, setQuestion] = useState<Question | null>(null);
+  const handleQuestionSubmit = async ({ question, answer, file_ids }: InsertQuestionResponse) => {
     const res: GetQuestionsByUserIdResponse = await getQuestionsByUserId();
+    setAnswer(answer);
+    setQuestion(question);
     setListQuestions(res.questions);
+
+    console.log("file attuali:", listDocuments);
+    console.log("file_ids ricevuti:", file_ids);
+
+    setListDocuments(prevDocs =>
+      prevDocs.map(doc => ({
+        ...doc,
+        selectByAnswer: file_ids?.includes(doc.file_id) ?? false
+      }))
+    );
   };
 
   return (

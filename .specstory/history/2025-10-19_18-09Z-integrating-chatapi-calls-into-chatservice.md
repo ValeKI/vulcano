@@ -521,3 +521,821 @@ def list_questions_by_user_id(user_id: int) -> List[Dict]:
 
 ---
 
+_**User (2025-10-19 19:00Z)**_
+
+mi scrivi meglio questi due punti:
+- titolo riassuntivo generato con ai alle domande richieste in chat
+- in caso di domande o risposte troppo grandi vengono generati dei file salvati su minio e anche su qdrant per magari ricercarli
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````markdown
+# Vulcano
+...existing code...
+## Feature in sviluppo
+
+- Generazione automatica di un titolo riassuntivo tramite AI per ogni domanda inviata nella chat
+- Gestione di domande e risposte di grandi dimensioni: se il contenuto supera una certa soglia, viene salvato come file su MinIO e indicizzato su Qdrant per facilitarne la ricerca e il recupero
+...existing code...
+````
+
+---
+
+_**User (2025-10-19 19:05Z)**_
+
+ok ora mi servono a partire da
+CREATE TABLE answers (
+    id SERIAL PRIMARY KEY,
+    question_id INT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+    content_file_id VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+che esista un metodo di insert che non usi content_file_id. Viene passato user_id e content e 
+question_id
+
+che esista un metodo getAnswerByQuestionId
+
+prendi spunto da db_question_utils.py come formato
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+```python
+from db import get_cursor
+from typing import Optional, Dict
+
+def insert_answer(question_id: int, user_id: int, content: str) -> int:
+    """
+    Inserisce una nuova risposta senza content_file_id.
+    """
+    cur = get_cursor()
+    cur.execute(
+        "INSERT INTO answers (question_id, content_file_id, created_at) VALUES (%s, NULL, DEFAULT) RETURNING id",
+        (question_id,)
+    )
+    answer_id = cur.fetchone()['id']
+    # Salva il contenuto della risposta in una tabella separata se necessario, oppure aggiungi qui la logica per gestire il campo 'content'
+    # Ad esempio, se hai una colonna 'content' nella tabella answers, aggiorna la query di conseguenza.
+    cur.connection.commit()
+    return answer_id
+
+def get_answer_by_question_id(question_id: int) -> Optional[Dict]:
+    """
+    Recupera la risposta associata a una domanda tramite question_id.
+    """
+    cur = get_cursor()
+    cur.execute(
+        "SELECT id, question_id, content_file_id, created_at FROM answers WHERE question_id=%s",
+        (question_id,)
+    )
+    row = cur.fetchone()
+    if row:
+        return {
+            "id": row['id'],
+            "question_id": row['question_id'],
+            "content_file_id": row['content_file_id'],
+            "created_at": row['created_at']
+        }
+    return None
+```
+**Note:**  
+- Se la tabella `answers` non ha una colonna `content`, dovresti aggiungerla per poter salvare il testo della risposta.  
+- Se invece il contenuto viene gestito tramite file (content_file_id), la funzione di insert va adattata di conseguenza.  
+- Il formato segue quello di `db_question_utils.py`.
+
+---
+
+_**User (2025-10-19 19:06Z)**_
+
+def insert_answer(question_id: int, user_id: int, content: str) -> int:
+    """
+    Inserisce una nuova risposta senza content_file_id.
+    """
+    cur = get_cursor()
+    cur.execute(
+        "INSERT INTO answers (question_id, content_file_id, created_at) VALUES (%s, NULL, DEFAULT) RETURNING id",
+        (question_id,)
+    )
+    answer_id = cur.fetchone()['id']
+    # Salva il contenuto della risposta in una tabella separata se necessario, oppure aggiungi qui la logica per gestire il campo 'content'
+    # Ad esempio, se hai una colonna 'content' nella tabella answers, aggiorna la query di conseguenza.
+    cur.connection.commit()
+    return answer_id
+
+
+qui doveva inserire principalmente il content e question_id, come ti dicevo:
+CREATE TABLE answers (
+    id SERIAL PRIMARY KEY,
+    question_id INT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    content_file_id VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+questa è la tabella, vedi user_id??
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+```python
+from db import get_cursor
+from typing import Optional, Dict
+
+def insert_answer(question_id: int, content: str) -> int:
+    """
+    Inserisce una nuova risposta con solo question_id e content.
+    """
+    cur = get_cursor()
+    cur.execute(
+        "INSERT INTO answers (question_id, content) VALUES (%s, %s) RETURNING id",
+        (question_id, content)
+    )
+    answer_id = cur.fetchone()['id']
+    cur.connection.commit()
+    return answer_id
+
+def get_answer_by_question_id(question_id: int) -> Optional[Dict]:
+    """
+    Recupera la risposta associata a una domanda tramite question_id.
+    """
+    cur = get_cursor()
+    cur.execute(
+        "SELECT id, question_id, content, content_file_id, created_at FROM answers WHERE question_id=%s",
+        (question_id,)
+    )
+    row = cur.fetchone()
+    if row:
+        return {
+            "id": row['id'],
+            "question_id": row['question_id'],
+            "content": row['content'],
+            "content_file_id": row['content_file_id'],
+            "created_at": row['created_at']
+        }
+    return None
+```
+**Nota:**  
+- La tabella `answers` non ha `user_id`, quindi la funzione non lo richiede né lo usa.
+- Ora la funzione inserisce solo `question_id` e `content`, come da schema.
+
+---
+
+_**User (2025-10-19 19:08Z)**_
+
+ok ora mi servono i due endpoint in chat delle answer
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+```python
+# ...existing code...
+from utils.db.db_answer_utils import (
+    insert_answer,
+    get_answer_by_question_id
+)
+# ...existing code...
+
+@chat_bp.route('/answers', methods=['POST'])
+def api_insert_answer():
+    data = request.json
+    question_id = data.get('question_id')
+    content = data.get('content')
+    if not question_id or not content:
+        return jsonify({"error": "question_id and content are required"}), 400
+    answer_id = insert_answer(question_id, content)
+    return jsonify({"id": answer_id})
+
+@chat_bp.route('/answers/<int:question_id>', methods=['GET'])
+def api_get_answer_by_question_id(question_id):
+    answer = get_answer_by_question_id(question_id)
+    if answer:
+        return jsonify(answer)
+    return jsonify({"error": "Answer not found"}), 404
+
+# ...existing code...
+```
+
+---
+
+_**User (2025-10-19 19:15Z)**_
+
+call_ai_to_generate_answer non deve solo ottenere la risposta, ma anche l'elenco dei file id dove ha reperito l'informazione
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+```python
+def call_ai_to_generate_answer(question):
+    # Simula una chiamata a un modello AI per generare una risposta e i file_id utilizzati
+    risposta = f"Risposta generata per la domanda: {question}"
+    file_ids = [1, 2]  # Simulazione: elenco di file_id usati per la risposta
+    return {
+        "answer": risposta,
+        "file_ids": file_ids
+    }
+```
+
+---
+
+_**User (2025-10-19 19:17Z)**_
+
+mi crei read_from_redis_cache,
+    write_to_redis_cache con read_from_redis_cache che non funziona mai?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+```python
+def read_from_redis_cache(key):
+    # Simula una cache che non funziona mai (cache miss)
+    return None
+
+def write_to_redis_cache(key, value, ex=None):
+    # Simula la scrittura in cache (non fa nulla)
+    pass
+```
+
+---
+
+_**User (2025-10-19 19:19Z)**_
+
+ok puoi prendere due file a caso se ci sono (se no ne prendi meno) da file_list?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+```python
+import random
+
+def call_ai_to_generate_answer(question, file_list):
+    # ...existing code...
+    risposta = f"Risposta generata per la domanda: {question}"
+    # Prendi fino a 2 file a caso dalla lista, se disponibili
+    sampled_files = random.sample(file_list, min(2, len(file_list)))
+    file_ids = [file['id'] for file in sampled_files]
+    return {
+        "answer": risposta,
+        "file_ids": file_ids
+    }
+```
+
+---
+
+_**User (2025-10-19 19:20Z)**_
+
+se non ci sono files_ids deve andare in errore
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+```python
+# ...existing code...
+
+@chat_bp.route('/questions', methods=['POST'])
+def api_insert_question():
+    data = request.json
+    content = data.get('content')
+    user_id = get_user_id_from_request()
+
+    files_ids = list_files_for_user(user_id)
+    if not files_ids:
+        return jsonify({"error": "Nessun file disponibile per l'utente"}), 400
+
+    # gestione su redis in lettura futura (cache delle risposte)
+    ai_answer = read_from_redis_cache(user_id, content)
+    if ai_answer:
+        question_id = insert_question(user_id, content)
+
+        # chiama AI per generare la risposta alla domanda inserita
+        ai_answer = call_ai_to_generate_answer(content, files_ids)
+
+        # salva la risposta nel database
+        insert_answer(question_id, ai_answer)
+
+        # gestione su redis in scrittura futura (cache delle risposte)
+        write_to_redis_cache(user_id, content, ai_answer)
+
+    return jsonify({"id": question_id, "answer": ai_answer})
+
+# ...existing code...
+```
+
+---
+
+_**User (2025-10-19 19:26Z)**_
+
+uhmm
+
+  File "C:\Users\demig\Documents\vulcano\vulcano-be\routes\chat.py", line 60, in api_insert_question
+    return jsonify({"id": question_id, "answer": ai_answer})
+                          ^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'question_id' where it is not associated with a value
+127.0.0.1 - - [19/Oct/2025 21:25:55] "POST /chat/questions HTTP/1.1" 500 -
+
+
+dovrebbe avere un valore
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+```python
+# ...existing code...
+
+@chat_bp.route('/questions', methods=['POST'])
+def api_insert_question():
+    data = request.json
+    content = data.get('content')
+    user_id = get_user_id_from_request()
+
+    files_ids = list_files_for_user(user_id)
+    if not files_ids:
+        return jsonify({"error": "Nessun file disponibile per l'utente"}), 400
+
+    question_id = insert_question(user_id, content)
+
+    # gestione su redis in lettura futura (cache delle risposte)
+    ai_answer = read_from_redis_cache(content)
+    if not ai_answer:
+        # chiama AI per generare la risposta alla domanda inserita
+        ai_answer = call_ai_to_generate_answer(content, files_ids)
+
+        # salva la risposta nel database
+        insert_answer(question_id, ai_answer)
+
+        # gestione su redis in scrittura futura (cache delle risposte)
+        write_to_redis_cache(content, ai_answer)
+
+    return jsonify({"id": question_id, "answer": ai_answer})
+
+# ...existing code...
+```
+
+---
+
+_**User (2025-10-19 19:27Z)**_
+
+non ho capito cos'è cambiato
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+Ecco cosa è cambiato rispetto alla versione precedente:
+
+- La variabile `question_id` ora viene sempre valorizzata prima di qualsiasi condizione, quindi non può essere "unbound".
+- La logica è stata corretta: la risposta AI viene generata e salvata solo se non è presente in cache (`if not ai_answer:`), mentre prima la generazione avveniva solo se la cache era presente (`if ai_answer:`), che era un errore logico.
+
+Esempio di differenza:
+
+**PRIMA (errata):**
+```python
+ai_answer = read_from_redis_cache(content)
+if ai_answer:
+    question_id = insert_question(user_id, content)
+    ai_answer = call_ai_to_generate_answer(content, files_ids)
+    insert_answer(question_id, ai_answer)
+    write_to_redis_cache(content, ai_answer)
+return jsonify({"id": question_id, "answer": ai_answer})
+```
+
+**DOPO (corretta):**
+```python
+question_id = insert_question(user_id, content)
+ai_answer = read_from_redis_cache(content)
+if not ai_answer:
+    ai_answer = call_ai_to_generate_answer(content, files_ids)
+    insert_answer(question_id, ai_answer)
+    write_to_redis_cache(content, ai_answer)
+return jsonify({"id": question_id, "answer": ai_answer})
+```
+
+In sintesi:  
+- `question_id` viene sempre valorizzato.  
+- La risposta AI viene generata solo se non è già in cache.
+
+---
+
+_**User (2025-10-19 19:32Z)**_
+
+  File "C:\Users\demig\Documents\vulcano\vulcano-be\utils\db\db_answer_utils.py", line 6, in insert_answer
+    cur.execute(
+    ~~~~~~~~~~~^
+        "INSERT INTO answers (question_id, content) VALUES (%s, %s) RETURNING id",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        (question_id, content)
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\psycopg2\extras.py", line 236, in execute
+    return super().execute(query, vars)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+psycopg2.ProgrammingError: can't adapt type 'dict'
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+```python
+from db import get_cursor
+from typing import Optional, Dict
+
+def insert_answer(question_id: int, ai_answer: dict) -> int:
+    """
+    Inserisce una nuova risposta con question_id e content (estratto da ai_answer['answer']).
+    """
+    cur = get_cursor()
+    cur.execute(
+        "INSERT INTO answers (question_id, content) VALUES (%s, %s) RETURNING id",
+        (question_id, ai_answer['answer'])
+    )
+    answer_id = cur.fetchone()['id']
+    cur.connection.commit()
+    return answer_id
+
+def get_answer_by_question_id(question_id: int) -> Optional[Dict]:
+    cur = get_cursor()
+    cur.execute(
+        "SELECT id, question_id, content, content_file_id, created_at FROM answers WHERE question_id=%s",
+        (question_id,)
+    )
+    row = cur.fetchone()
+    if row:
+        return {
+            "id": row['id'],
+            "question_id": row['question_id'],
+            "content": row['content'],
+            "content_file_id": row['content_file_id'],
+            "created_at": row['created_at']
+        }
+    return None
+```
+
+---
+
+_**User (2025-10-19 19:40Z)**_
+
+ok vorrei aggiungere per ogni file in sampled_files, il riferimento alla answer in answer_ids su qdrant. Puoi aggiungermi un metodo che dato file_id e answer_id, aggiorni quel campo su qdrant?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+```python
+# ...existing code...
+
+def add_answer_id_to_file_chunks(file_id, answer_id, collection_name="files"):
+    """
+    Aggiorna tutti i chunk di un file su Qdrant aggiungendo l'answer_id in answer_ids.
+    """
+    print(f"[QDRANT] add_answer_id_to_file_chunks: file_id={file_id}, answer_id={answer_id}")
+    client = QdrantClient(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT, timeout=30.0)
+    query = {
+        "must": [
+            {
+                "key": "file_id",
+                "match": {"value": file_id}
+            }
+        ]
+    }
+    results = client.scroll(collection_name=collection_name, scroll_filter=query, limit=1000)
+    points_to_update = []
+    for point in results[0]:
+        payload = point.payload
+        answer_ids = payload.get("answer_ids", [])
+        if answer_id not in answer_ids:
+            answer_ids.append(answer_id)
+            payload["answer_ids"] = answer_ids
+            points_to_update.append(PointStruct(id=point.id, vector=point.vector, payload=payload))
+    if points_to_update:
+        client.upsert(collection_name=collection_name, points=points_to_update)
+        print(f"[QDRANT] Updated {len(points_to_update)} chunks for file_id={file_id} with answer_id={answer_id}")
+    else:
+        print(f"[QDRANT] No chunks to update for file_id={file_id}")
+    return len(points_to_update)
+
+# ...existing code...
+```
+
+---
+
+_**User (2025-10-19 19:41Z)**_
+
+puoi chiamare il nuovo metodo qui?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+```python
+import random
+from utils.qdrant_utils import add_answer_id_to_file_chunks
+
+def call_ai_to_generate_answer(question, file_list):
+    # ...existing code...
+    risposta = f"Risposta generata per la domanda: {question}"
+    sampled_files = random.sample(file_list, min(2, len(file_list)))
+    file_ids = [file['file_id'] for file in sampled_files]
+    # ...existing code...
+
+    # Dopo aver generato la risposta, aggiorna Qdrant con un answer_id fittizio (esempio: "ai_answer_id")
+    answer_id = "ai_answer_id"  # Sostituisci con l'id reale della answer se disponibile
+    for file_id in file_ids:
+        add_answer_id_to_file_chunks(file_id, answer_id)
+
+    return {
+        "answer": risposta,
+        "file_ids": file_ids
+    }
+```
+
+---
+
+_**User (2025-10-19 19:44Z)**_
+
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\pydantic\main.py", line 250, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+pydantic_core._pydantic_core.ValidationError: 6 validation errors for PointStruct
+vector.list[float]
+  Input should be a valid list [type=list_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.12/v/list_type
+vector.list[list[float]]
+  Input should be a valid list [type=list_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.12/v/list_type
+vector.dict[str,union[list[float],SparseVector,list[list[float]],Document,Image,InferenceObject]]
+  Input should be a valid dictionary [type=dict_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.12/v/dict_type
+vector.Document
+  Input should be a valid dictionary or instance of Document [type=model_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.12/v/model_type
+vector.Image
+  Input should be a valid dictionary or instance of Image [type=model_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.12/v/model_type
+vector.InferenceObject
+  Input should be a valid dictionary or instance of InferenceObject [type=model_type, input_value=None, input_type=NoneType]     
+    For further information visit https://errors.pydantic.dev/2.12/v/model_type
+127.0.0.1 - - [19/Oct/2025 21:44:32] "POST /chat/questions HTTP/1.1" 500 -
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+```python
+# ...existing code...
+
+def add_answer_id_to_file_chunks(file_id, answer_id, collection_name="files"):
+    """
+    Aggiorna tutti i chunk di un file su Qdrant aggiungendo l'answer_id in answer_ids.
+    """
+    print(f"[QDRANT] add_answer_id_to_file_chunks: file_id={file_id}, answer_id={answer_id}")
+    client = QdrantClient(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT, timeout=30.0)
+    query = {
+        "must": [
+            {
+                "key": "file_id",
+                "match": {"value": file_id}
+            }
+        ]
+    }
+    results = client.scroll(collection_name=collection_name, scroll_filter=query, limit=1000)
+    points_to_update = []
+    for point in results[0]:
+        payload = point.payload
+        answer_ids = payload.get("answer_ids", [])
+        if answer_id not in answer_ids:
+            answer_ids.append(answer_id)
+            payload["answer_ids"] = answer_ids
+            # Assicurati che il vettore sia una lista di float (es: [0.0])
+            vector = getattr(point, "vector", None)
+            if vector is None:
+                vector = [0.0]
+            points_to_update.append(PointStruct(id=point.id, vector=vector, payload=payload))
+    if points_to_update:
+        client.upsert(collection_name=collection_name, points=points_to_update)
+        print(f"[QDRANT] Updated {len(points_to_update)} chunks for file_id={file_id} with answer_id={answer_id}")
+    else:
+        print(f"[QDRANT] No chunks to update for file_id={file_id}")
+    return len(points_to_update)
+
+# ...existing code...
+```
+**Correzione:**  
+Quando aggiorni i chunk, assicurati che il campo `vector` passato a `PointStruct` sia sempre una lista di float (ad esempio `[0.0]`).  
+Questo evita l'errore di validazione di Pydantic.
+
+---
+
+_**User (2025-10-19 19:46Z)**_
+
+puoi aggiungere delle stampe per vedere meglio i file passati e i file scelti?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+```python
+import random
+
+def call_ai_to_generate_answer(question, file_list):
+    print("[AI] file_list ricevuti:", file_list)
+    risposta = f"Risposta generata per la domanda: {question}"
+    sampled_files = random.sample(file_list, min(2, len(file_list)))
+    print("[AI] sampled_files scelti:", sampled_files)
+    file_ids = [file['file_id'] for file in sampled_files]
+    print("[AI] file_ids estratti:", file_ids)
+    return {
+        "answer": risposta,
+        "file_ids": file_ids
+    }
+```
+
+---
+
+_**User (2025-10-19 20:06Z)**_
+
+per tutti i file presenti in file_ids la props di selectByAnswer in listDocuments deve essere true
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````tsx
+import React, { useEffect } from 'react';
+import DocumentItem from './DocumentItem';
+
+export interface DocumentListFile {
+    file_id: number;
+    file_name: string;
+    format: string;
+    user_id?: number;
+    selectByAnswer?: boolean;
+}
+
+interface DocumentListProps {
+    listFiles?: DocumentListFile[];
+    fileIdsByAnswer?: number[]; // aggiunta per passare i file_ids
+}
+
+const DocumentList: React.FC<DocumentListProps> = ({ listFiles = [], fileIdsByAnswer = [] }) => {
+    // Imposta selectByAnswer a true per i file in fileIdsByAnswer
+    const filesWithSelection = listFiles.map(file => ({
+        ...file,
+        selectByAnswer: fileIdsByAnswer.includes(file.file_id)
+    }));
+
+    const onViewFile = (fileName: string) => {
+        console.log(`Viewing file: ${fileName}`);
+    }
+
+    const onDownloadFile = (fileName: string) => {
+        console.log(`Downloading file: ${fileName}`);
+    }
+
+    return (
+        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {filesWithSelection.map((file) => (
+                <li key={file.file_id}>
+                    <DocumentItem
+                        name={file.file_name}
+                        onView={() => onViewFile(file.file_name)}
+                        onDownload={() => onDownloadFile(file.file_name)}
+                        selected={!!file.selectByAnswer}
+                    />
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+export default DocumentList;
+````
+
+---
+
+_**User (2025-10-19 20:06Z)**_
+
+per tutti i file presenti in file_ids la props di selectByAnswer in listDocuments deve essere true. Questo deve succedere in handleQuestionSubmit
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````tsx
+// ...existing code...
+  const handleQuestionSubmit = async ({ question, answer, file_ids }: InsertQuestionResponse) => {
+    const res: GetQuestionsByUserIdResponse = await getQuestionsByUserId();
+    setAnswer(answer);
+    setQuestion(question);
+    setListQuestions(res.questions);
+
+    // Imposta selectByAnswer a true per i file in file_ids
+    setListDocuments(prevDocs =>
+      prevDocs.map(doc => ({
+        ...doc,
+        selectByAnswer: file_ids?.includes(doc.file_id) ?? false
+      }))
+    );
+  };
+// ...existing code...
+````
+
+---
+
+_**User (2025-10-19 20:12Z)**_
+
+perché in 
+    console.log("file_ids ricevuti:", file_ids); è vuoto??
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````tsx
+// ...existing code...
+  const handleQuestionSubmit = async ({ question, answer, file_ids }: InsertQuestionResponse) => {
+    // ...existing code...
+    console.log("file attuali:", listDocuments);
+    console.log("file_ids ricevuti:", file_ids);
+
+    // ...existing code...
+  };
+// ...existing code...
+````
+
+Il motivo per cui `file_ids` è vuoto in `console.log("file_ids ricevuti:", file_ids);` è che probabilmente la risposta dell'API (`InsertQuestionResponse`) non contiene la proprietà `file_ids` oppure il backend non la sta inviando correttamente.
+
+**Cosa verificare:**
+- Assicurati che il backend, quando risponde all'inserimento della domanda, includa effettivamente `file_ids` nell'oggetto JSON di risposta.
+- Controlla che la chiamata API e il tipo `InsertQuestionResponse` siano corretti e prevedano `file_ids`.
+
+Se il backend non invia `file_ids`, il valore sarà `undefined` o vuoto nel frontend.
+
+---
+
+_**User (2025-10-19 20:14Z)**_
+
+no perché in console.log("Risposta ricevuta:", res); c'è D:
+
+Risposta ricevuta: 
+Object { answer: {…}, id: 8 }
+​
+answer: Object { answer: "Risposta generata per la domanda: ccccccc", file_ids: (2) […] }
+​​
+answer: "Risposta generata per la domanda: ccccccc"
+​​
+file_ids: Array [ 4, 2 ]
+​​
+<prototype>: Object { … }
+​
+id: 8
+​
+<prototype>: Object { … }
+ChatInput.tsx:23:21
+file attuali: 
+Array(4) [ {…}, {…}, {…}, {…} ]
+Chat.tsx:41:13
+file_ids ricevuti: undefined
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````tsx
+// ...existing code...
+  const handleQuestionSubmit = async (res: InsertQuestionResponse) => {
+    // Se la risposta ha la struttura: { answer: { answer: string, file_ids: number[] }, id: number }
+    const file_ids = res.answer?.file_ids;
+    setAnswer(res.answer?.answer ?? "");
+    setQuestion(res.question ?? null);
+    setListQuestions((await getQuestionsByUserId()).questions);
+
+    console.log("file attuali:", listDocuments);
+    console.log("file_ids ricevuti:", file_ids);
+
+    setListDocuments(prevDocs =>
+      prevDocs.map(doc => ({
+        ...doc,
+        selectByAnswer: file_ids?.includes(doc.file_id) ?? false
+      }))
+    );
+  };
+// ...existing code...
+````
+
+**Spiegazione:**  
+Nel tuo caso, `file_ids` si trova dentro `res.answer.file_ids` e non direttamente in `res.file_ids`.  
+Quindi devi estrarlo da `res.answer.file_ids` nel frontend.
+
+---
+
