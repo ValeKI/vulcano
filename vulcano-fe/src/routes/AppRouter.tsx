@@ -4,6 +4,7 @@ import Chat from '../pages/Chat';
 import { AuthProvider } from '../context/AuthContext';
 import ProtectedRoute from '../routes/ProtectedRoute';
 import PublicRoute from '../routes/PublicRoute';
+import ResetPassword from '../pages/ResetPassword';
 
 const AppRouter = () => (
   <AuthProvider>
@@ -17,6 +18,16 @@ const AppRouter = () => (
             </PublicRoute>
           }
         />
+
+        <Route
+          path="/reset-password"
+          element={
+            <PublicRoute>
+              <ResetPassword />
+            </PublicRoute>
+          }
+        />
+
         <Route
           path="/chat"
           element={

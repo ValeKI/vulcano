@@ -3,6 +3,9 @@ import jwt
 from db import get_cursor
 from utils.jwt_utils import generate_refresh_token, generate_access_token, verify_token, verify_refresh_token
 import bcrypt
+from utils.email_utils import send_reset_email
+from datetime import datetime, timedelta, timezone
+from config import CURRENT_CONFIG
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -127,3 +130,58 @@ def signUp():
     cur.connection.commit()
 
     return jsonify({"status": "ok", "user": {"username": username, "email": email}})
+
+@auth_bp.route("/forgot-password", methods=["POST"])
+def forgot_password():
+    data = request.get_json()
+    email = data.get("email")
+    if not email:
+        return jsonify({"error": "Email mancante"}), 400
+
+    cur = get_cursor()
+    cur.execute("SELECT * FROM users WHERE email=%s", (email,))
+    user = cur.fetchone()
+    if not user:
+        return jsonify({"status": "ok"}), 200
+
+    payload = {
+        "id": user["id"],
+        "email": user["email"],
+        "exp": datetime.now(timezone.utc) + timedelta(hours=1)
+    }
+    import jwt
+    from config import CURRENT_CONFIG
+    reset_token = jwt.encode(payload, CURRENT_CONFIG.SECRET_KEY, algorithm="HS256")
+    reset_link = f"{CURRENT_CONFIG.FRONTEND_BASE_URL}/reset-password?token={reset_token}"
+    send_reset_email(email, reset_link)
+    return jsonify({"status": "ok"}), 200
+
+@auth_bp.route("/reset-password", methods=["POST"])
+def reset_password():
+    data = request.get_json()
+    token = data.get("token")
+    new_password = data.get("new_password")
+    if not token or not new_password:
+        return jsonify({"error": "Token o nuova password mancanti"}), 400
+
+    try:
+        decoded = jwt.decode(token, CURRENT_CONFIG.SECRET_KEY, algorithms=["HS256"])
+        user_id = decoded["id"]
+    except jwt.ExpiredSignatureError:
+        return jsonify({"error": "Token scaduto"}), 400
+    except jwt.InvalidTokenError:
+        return jsonify({"error": "Token non valido"}), 400
+    
+    salt = bcrypt.gensalt()
+    hashed_pw = bcrypt.hashpw(new_password.encode(), salt).decode('utf-8')
+
+    cur = get_cursor()
+    result = cur.execute(
+        "UPDATE users SET password=%s, reset_token=NULL WHERE id=%s AND reset_token=%s",
+        (hashed_pw, user_id, token)
+    )
+    if cur.rowcount == 0:
+        return jsonify({"error": "Token non valido"}), 400
+
+    cur.connection.commit()
+    return jsonify({"status": "ok"}), 200

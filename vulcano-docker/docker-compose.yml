@@ -50,7 +50,7 @@ services:
       - minio_data:/data
     networks:
       - backend
-  
+
   mc:
     build:
       context: ./mc
@@ -58,6 +58,17 @@ services:
     depends_on:
       - minio
     restart: on-failure
+    networks:
+      - backend
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog_container
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    profiles:
+      - dev
     networks:
       - backend
 
