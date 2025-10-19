@@ -32,3 +32,12 @@ export const getUserFiles = async (): Promise<GetUserFilesResponse> => {
   const response = await apiClient.get("/files/list", { withCredentials: true });
   return response.data;
 };
+
+export interface GetFilesByAnswerIdResponse {
+  files: UserFile[];
+}
+
+export const getFilesByAnswerId = async (answerId: number): Promise<GetFilesByAnswerIdResponse> => {
+  const response = await apiClient.get(`/files/list_by_answer_id?answer_id=${answerId}`, { withCredentials: true });
+  return response.data;
+};

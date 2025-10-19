@@ -4,21 +4,18 @@ import type { Question } from "../services/ChatService";
 
 interface QuestionListProps {
     questionList?: Question[];
+    onViewQuestion: (questionId: number) => void;
 }
 
-const QuestionList: React.FC<QuestionListProps> = ({ questionList = [] }) => {
-   useEffect(() => {
-        console.log('questionList aggiornato:', questionList);
-    }, [questionList]);
-
-    const onViewAnswer = (questionId: number) => {
-        console.log(`Viewing question: ${questionId}`);
+const QuestionList: React.FC<QuestionListProps> = ({ questionList = [], onViewQuestion }) => {
+    const handleViewQuestion = (questionId: number) => {
+        onViewQuestion(questionId);
     }
 
     return (
         <ul>
-            {questionList.map((answer, idx) => (
-                <ItemView key={answer.id} name={`Question ${idx + 1}`} onView={() => onViewAnswer(answer.id)} type="question" />
+            {questionList.map((question, idx) => (
+                <ItemView key={question.id} name={`Question ${idx + 1}`} onView={() => handleViewQuestion(question.id)} type="question" />
             ))}
         </ul>
     );

@@ -3,8 +3,6 @@ from typing import Optional, Dict
 
 def insert_answer(question_id: int, content: str) -> int:
 
-    print(content)
-
     cur = get_cursor()
     cur.execute(
         "INSERT INTO answers (question_id, content) VALUES (%s, %s) RETURNING id",

@@ -8,6 +8,8 @@ import { getUserFiles } from '../services/FileService';
 import { type DocumentListFile } from '../components/DocumentList';
 import { type Question } from '../services/ChatService';
 import { getQuestionsByUserId, type GetQuestionsByUserIdResponse, type InsertQuestionResponse } from '../api/ChatApi';
+import { getFilesByAnswerId } from '../services/FileService';
+import { getAnswerByQuestionId } from '../services/ChatService';
 
 
 const Chat: React.FC = () => {
@@ -22,8 +24,7 @@ const Chat: React.FC = () => {
       try {
         const filesRes = await getUserFiles();
         const mappedFiles: DocumentListFile[] = filesRes.files.map(f => ({
-          ...f,
-          selectByAnswer: false
+          ...f
         }));
         setListDocuments(mappedFiles);
 
@@ -41,8 +42,7 @@ const Chat: React.FC = () => {
       try {
         const res = await getUserFiles();
         const mappedFiles: DocumentListFile[] = res.files.map(f => ({
-          ...f,
-          selectByAnswer: false
+          ...f
         }));
         setListDocuments(mappedFiles);
       } catch (e) {
@@ -52,10 +52,34 @@ const Chat: React.FC = () => {
     }
   };
 
+  const handleViewQuestion = async (questionId: number) => {
+    try {
+      const questionRes = await getQuestionsByUserId();
+      const question = questionRes.questions.find(q => q.id === questionId);
+      const answerRes = await getAnswerByQuestionId(questionId);
+      console.log("Answer ID:", answerRes.id);
+      const file_ids = await getFilesByAnswerId(answerRes.id).then(res => res.files.map(f => f.file_id));
+
+      console.log("File IDs associati alla risposta:", file_ids);
+
+      if (question && answerRes) {
+        setQuestion(question.content);
+        setAnswer(answerRes.content);
+
+        setListDocuments(prevDocs =>
+          prevDocs.map(doc => ({
+            ...doc,
+            selectByAnswer: file_ids?.includes(doc.file_id) ?? false
+          }))
+        );
+      }
+    } catch (e) {
+      console.error("Errore nel recupero della domanda:", e);
+    }
+  };
+
   const handleQuestionSubmit = async ({ question, answer, file_ids }: InsertQuestionResponse) => {
     const res: GetQuestionsByUserIdResponse = await getQuestionsByUserId();
-
-    console.log("Domanda inviata:", question);
 
     // Fix: usa optional chaining per evitare errori se answer non è un oggetto
     const answerText = (answer && typeof answer === "object" && "answer" in answer)
@@ -65,9 +89,6 @@ const Chat: React.FC = () => {
     setAnswer(answerText);
     setQuestion(question);
     setListQuestions(res.questions);
-
-    console.log("file attuali:", listDocuments);
-    console.log("file_ids ricevuti:", file_ids);
 
     setListDocuments(prevDocs =>
       prevDocs.map(doc => ({
@@ -92,7 +113,7 @@ const Chat: React.FC = () => {
           </div>
         </div>
         <div className="chatbox-right">
-          <QuestionList questionList={listQuestions}/>
+          <QuestionList questionList={listQuestions} onViewQuestion={handleViewQuestion}/>
         </div>
       </div>
     </VulcanoPage>
