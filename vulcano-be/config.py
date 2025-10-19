@@ -23,6 +23,8 @@ class BaseConfig:
     MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
     MINIO_SECURE = os.getenv("MINIO_SECURE") == "true"
     MINIO_BUCKET = os.getenv("MINIO_BUCKET")
+    QDRANT_HOST = os.getenv("QDRANT_HOST")
+    QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
 
 class DevelopmentConfig(BaseConfig):
     DEBUG = True

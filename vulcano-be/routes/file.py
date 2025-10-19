@@ -2,10 +2,11 @@ from flask import Blueprint, request, jsonify, send_file
 import os
 from io import BytesIO
 from utils.jwt_utils import require_auth
-from utils.file_utils import get_unique_file_name, insert_file_with_unique_name
+from utils.file_utils import get_unique_file_name, insert_new_file
 from utils.minio_utils import upload_user_file, get_user_file
 from utils.auth_utils import get_user_id_from_request
 from utils.db.db_file_utils import list_files_for_user
+from utils.qdrant_utils import upload_file_chunks_to_qdrant
 
 file_bp = Blueprint("files", __name__)
 
@@ -30,7 +31,11 @@ def upload_file():
     # Carica su MinIO
     upload_user_file(user_id, new_file_name, file.read())
 
-    insert_file_with_unique_name(new_file_name, user_id)
+    # Inserisci il file nel database e ottieni l'ID
+    file_id = insert_new_file(new_file_name, user_id)
+
+    # Inserire su qdrant i chunks del file caricato
+    upload_file_chunks_to_qdrant(file_id, user_id, new_file_name)
 
     return jsonify({"status": "ok", "filename": new_file_name})
 
