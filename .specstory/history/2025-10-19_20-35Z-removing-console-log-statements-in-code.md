@@ -923,3 +923,15 @@ def list_files_by_answer_id():
 
 ---
 
+_**User (2025-10-19 21:06Z)**_
+
+quando aggiornano questionList lo mette in ordine di id in modo tale che id posizionale e id question crescono nella stesso verso
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+
+
+---
+

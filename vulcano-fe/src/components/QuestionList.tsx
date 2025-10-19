@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import ItemView from "./DocumentItem";
 import type { Question } from "../services/ChatService";
 
@@ -15,7 +15,7 @@ const QuestionList: React.FC<QuestionListProps> = ({ questionList = [], onViewQu
     return (
         <ul>
             {questionList.map((question, idx) => (
-                <ItemView key={question.id} name={`Question ${idx + 1}`} onView={() => handleViewQuestion(question.id)} type="question" />
+                <ItemView key={question.id} name={`Domanda ${idx + 1}`} onView={() => handleViewQuestion(question.id)} type="question" />
             ))}
         </ul>
     );
