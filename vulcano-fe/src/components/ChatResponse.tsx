@@ -1,12 +1,20 @@
+interface DocumentItemProps { questionText?: string, answerText?: string }
 
-interface DocumentItemProps { text: string }
-
-const ChatResponse: React.FC<DocumentItemProps> = ({ text }) => {
+const ChatResponse: React.FC<DocumentItemProps> = ({ questionText, answerText }) => {
     return (
         <div className="response-window-content">
-            <p>
-                {text}    
-            </p>
+            <div className="response-label">
+                Domanda:
+            </div>
+            <div className="response-question">
+                {questionText}
+            </div>
+            <div className="response-label">
+                Risposta:
+            </div>
+            <div className="response-answer">
+                {answerText}
+            </div>
         </div>
     );
 }

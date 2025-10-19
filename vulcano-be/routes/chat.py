@@ -62,7 +62,7 @@ def api_insert_question():
         # gestione su redis in scrittura futura (cache delle risposte)
         write_to_redis_cache(content, ai_answer)
 
-    return jsonify({"id": question_id, "answer": ai_answer, "file_ids": ai_answer["file_ids"]})
+    return jsonify({"id": question_id, "question": content, "answer": ai_answer, "file_ids": ai_answer["file_ids"]})
 
 @chat_bp.route('/answers/<int:question_id>', methods=['GET'])
 def api_get_answer_by_question_id(question_id):
