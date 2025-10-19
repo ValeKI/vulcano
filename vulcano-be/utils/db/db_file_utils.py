@@ -6,9 +6,17 @@ def db_insert_file(file_name, format, user_id):
         "INSERT INTO files (file_name, format, user_id) VALUES (%s, %s, %s) RETURNING file_id",
         (file_name, format, user_id)
     )
+    # Effettua il commit esplicito
+    if hasattr(cur, "connection"):
+        cur.connection.commit()
     result = cur.fetchone()
-    print(f"Inserted file with ID: {result}")
-    return result['file_id'] if result and 'file_id' in result else None
+    print(f"Inserted file with ID: {result} (type: {type(result)})")
+    if not result:
+        return None
+    if isinstance(result, dict):
+        return result.get('file_id')
+    # Se è una tupla, prendi il primo elemento
+    return result[0]
 
 def file_exists_for_user(filename, user_id):
     cur = get_cursor()

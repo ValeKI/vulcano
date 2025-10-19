@@ -1245,3 +1245,1321 @@ def upload_file_chunks_to_qdrant(user_id, file_id, file_content, chunk_size=1024
 
 ---
 
+_**User (2025-10-19 14:03Z)**_
+
+uhm mi ha restituito vuoto list_files, secondo te perché ??
+
+su qdrant ci sono
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [file.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/routes/file.py)
+
+**Motivo probabile:**  
+La funzione `list_files` prende gli id da Qdrant (`get_file_ids_by_user_id`) e poi cerca i dettagli nel database con `get_file_by_id`.  
+Se il database non ha ancora i record (o la chiave non corrisponde), la lista risulta vuota.
+
+**Soluzione:**  
+Aggiungi un print di debug per vedere cosa arriva da Qdrant e cosa dal DB:
+
+````python
+def list_files():
+    user_id = get_user_id_from_request()
+    if isinstance(user_id, tuple):
+        return user_id
+
+    file_ids = get_file_ids_by_user_id(user_id)
+    print("File IDs from Qdrant:", file_ids)  # Debug
+    files = []
+    for file_id in file_ids:
+        file_data = get_file_by_id(file_id)
+        print(f"File data for ID {file_id}:", file_data)  # Debug
+        if file_data:
+            files.append(file_data)
+    return jsonify({"files": files})
+# ...existing code...
+````
+
+**Cosa controllare:**
+- Se `file_ids` contiene valori, ma `get_file_by_id(file_id)` restituisce `None`, allora il file non esiste nel DB.
+- Assicurati che il campo `file_id` sia lo stesso tra Qdrant e il database (tipo, formato, valore).
+
+**Nota:**  
+Se hai caricato i file solo su Qdrant e non nel database, oppure c'è un mismatch tra gli id, la lista sarà vuota.
+
+---
+
+_**User (2025-10-19 14:05Z)**_
+
+non sta funzionando db_insert_file
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [db_file_utils.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/utils/db/db_file_utils.py)
+
+Aggiungi debug per vedere il tipo di risultato e gestisci sia dict che tuple.  
+Se il risultato è una tupla, prendi il primo elemento.
+
+````python
+def db_insert_file(file_name, format, user_id):
+    cur = get_cursor()
+    cur.execute(
+        "INSERT INTO files (file_name, format, user_id) VALUES (%s, %s, %s) RETURNING file_id",
+        (file_name, format, user_id)
+    )
+    result = cur.fetchone()
+    print(f"Inserted file with ID: {result} (type: {type(result)})")
+    if not result:
+        return None
+    if isinstance(result, dict):
+        return result.get('file_id')
+    # Se è una tupla, prendi il primo elemento
+    return result[0]
+# ...existing code...
+````
+
+---
+
+_**User (2025-10-19 14:07Z)**_
+
+nserted file with ID: RealDictRow({'file_id': 25}) (type: <class 'psycopg2.extras.RealDictRow'>)
+127.0.0.1 - - [19/Oct/2025 16:06:36] "POST /files/upload HTTP/1.1" 200 -
+
+mi sembra buono uhm
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+Sì, il risultato `RealDictRow({'file_id': 25})` indica che l'inserimento nel database ha funzionato correttamente e hai ottenuto il nuovo `file_id`.  
+Puoi continuare: ora il flusso tra upload, database e Qdrant dovrebbe essere coerente.
+
+---
+
+_**User (2025-10-19 14:07Z)**_
+
+File IDs from Qdrant: [None, 17, 18, 19, 20, 21, 22]
+File data for ID None: None
+File data for ID 17: None
+File data for ID 18: None
+File data for ID 19: None
+File data for ID 20: None
+File data for ID 21: None
+File data for ID 22: None
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [file.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/routes/file.py)
+
+Il problema è che tra gli ID restituiti da Qdrant c'è `None`, e gli altri ID non trovano corrispondenza nel database.  
+Questo può succedere se:
+- Alcuni punti in Qdrant hanno `file_id` nullo o non valido.
+- Gli ID in Qdrant non corrispondono agli ID nel database (tipo diverso, errore di inserimento, ecc.).
+
+**Soluzione:**  
+Filtra gli ID `None` e verifica che siano interi prima di chiamare `get_file_by_id`.
+
+````python
+def list_files():
+    user_id = get_user_id_from_request()
+    if isinstance(user_id, tuple):
+        return user_id
+
+    file_ids = get_file_ids_by_user_id(user_id)
+    print("File IDs from Qdrant:", file_ids)  # Debug
+    files = []
+    for file_id in file_ids:
+        if not file_id or not isinstance(file_id, int):
+            print(f"Skipping invalid file_id: {file_id}")
+            continue
+        file_data = get_file_by_id(file_id)
+        print(f"File data for ID {file_id}:", file_data)  # Debug
+        if file_data:
+            files.append(file_data)
+    return jsonify({"files": files})
+# ...existing code...
+````
+
+**Consiglio:**  
+Controlla anche in Qdrant come vengono inseriti i `file_id` (devono essere sempre interi e non `None`).  
+Se trovi punti con `file_id=None`, correggi la logica di inserimento.
+
+---
+
+_**User (2025-10-19 14:31Z)**_
+
+File IDs from Qdrant: [None, 17, 18, 19, 20, 21, 22]
+Skipping invalid file_id: None
+File data for ID 17: None
+File data for ID 18: None
+File data for ID 19: None
+File data for ID 20: None
+File data for ID 21: None
+File data for ID 22: None
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````python
+# ...existing code...
+def list_files():
+    user_id = get_user_id_from_request()
+    if isinstance(user_id, tuple):
+        return user_id
+
+    file_ids = get_file_ids_by_user_id(user_id)
+    print("File IDs from Qdrant:", file_ids)  # Debug
+    files = []
+    for file_id in file_ids:
+        if not file_id or not isinstance(file_id, int):
+            print(f"Skipping invalid file_id: {file_id}")
+            continue
+        file_data = get_file_by_id(file_id)
+        print(f"File data for ID {file_id}:", file_data)  # Debug
+        if file_data:
+            files.append(file_data)
+    if not files:
+        print("ATTENZIONE: Nessun file trovato nel DB per gli ID di Qdrant. Possibili cause:")
+        print("- Gli ID salvati in Qdrant non corrispondono agli ID reali del DB (es: tipo diverso, stringa invece di int, ecc.)")
+        print("- I punti in Qdrant sono stati inseriti con file_id errato o nullo.")
+        print("- Il DB è stato svuotato/reset dopo aver popolato Qdrant.")
+    return jsonify({"files": files})
+# ...existing code...
+````
+
+**Cosa fare ora:**  
+- Controlla in Qdrant che i punti abbiano il campo `file_id` valorizzato e che sia un intero che esiste nel DB.
+- Se hai inserito punti in Qdrant con `file_id=None` o con un valore non coerente, dovresti ripulire la collection o correggere la logica di inserimento.
+- Assicurati che quando inserisci i chunk in Qdrant, il valore di `file_id` sia quello restituito da `insert_new_file` (che ora funziona correttamente).
+
+---
+
+_**User (2025-10-19 14:32Z)**_
+
+db_insert_file fa commit?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````python
+# ...existing code...
+def db_insert_file(file_name, format, user_id):
+    cur = get_cursor()
+    cur.execute(
+        "INSERT INTO files (file_name, format, user_id) VALUES (%s, %s, %s) RETURNING file_id",
+        (file_name, format, user_id)
+    )
+    # Qui NON viene fatto commit esplicitamente.
+    # Il commit dipende dalla gestione della connessione nel get_cursor() o altrove.
+    result = cur.fetchone()
+    print(f"Inserted file with ID: {result} (type: {type(result)})")
+    if not result:
+        return None
+    if isinstance(result, dict):
+        return result.get('file_id')
+    return result[0]
+# ...existing code...
+````
+
+**Risposta:**  
+No, `db_insert_file` non fa commit esplicitamente.  
+Il commit avviene solo se la connessione/gestione transazione lo prevede (ad esempio, se usi autocommit o chiami `conn.commit()` dopo).  
+Se vuoi essere sicuro che venga fatto commit, devi gestirlo nella logica della connessione o aggiungere un commit esplicito dopo l'inserimento.
+
+---
+
+_**User (2025-10-19 14:32Z)**_
+
+puoi fare db_insert_file commit qua?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````python
+def db_insert_file(file_name, format, user_id):
+    cur = get_cursor()
+    cur.execute(
+        "INSERT INTO files (file_name, format, user_id) VALUES (%s, %s, %s) RETURNING file_id",
+        (file_name, format, user_id)
+    )
+    # Effettua il commit esplicito
+    if hasattr(cur, "connection"):
+        cur.connection.commit()
+    result = cur.fetchone()
+    print(f"Inserted file with ID: {result} (type: {type(result)})")
+    if not result:
+        return None
+    if isinstance(result, dict):
+        return result.get('file_id')
+    return result[0]
+# ...existing code...
+````
+
+---
+
+_**User (2025-10-19 14:36Z)**_
+
+per qualche motivo qdrant non vede l'ultimo inserito in get_file_ids_by_user_id
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````python
+def get_file_ids_by_user_id(user_id, collection_name="files"):
+    client = QdrantClient(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT)
+    # Forza la sincronizzazione prima della query (workaround per Qdrant che può essere "eventually consistent")
+    client.get_collections()  # chiamata dummy per forzare il refresh della connessione
+    query = {
+        "must": [
+            {
+                "key": "user_id",
+                "match": {"value": user_id}
+            }
+        ]
+    }
+    results = client.scroll(collection_name=collection_name, scroll_filter=query, limit=1000)
+    file_ids = set()
+    for point in results[0]:
+        file_ids.add(point.payload["file_id"])
+    return list(file_ids)
+# ...existing code...
+````
+
+**Nota:**  
+Se il problema persiste, aggiungi un piccolo delay (`time.sleep(0.5)`) dopo l'upsert prima di chiamare la funzione di query, oppure verifica che la chiamata a `client.upsert` non abbia errori e che il commit sul DB sia già avvenuto prima dell'upsert su Qdrant.
+
+---
+
+_**User (2025-10-19 14:41Z)**_
+
+mi aggiungi un po' di log che posso lasciare in qdrant_utils?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````python
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import PointStruct
+import uuid
+from config import CURRENT_CONFIG
+from io import BytesIO
+import PyPDF2
+
+def upload_file_chunks_to_qdrant(user_id, file_id, file_name, file_content, chunk_size=1024, collection_name="files"):
+    print(f"[QDRANT] upload_file_chunks_to_qdrant called with user_id={user_id}, file_id={file_id}, file_name={file_name}")
+    client = QdrantClient(
+        host=CURRENT_CONFIG.QDRANT_HOST,
+        port=CURRENT_CONFIG.QDRANT_PORT,
+        timeout=300.0
+    )
+    # Check if collection exists, create if not
+    collections = [c.name for c in client.get_collections().collections]
+    print(f"[QDRANT] Existing collections: {collections}")
+    if collection_name not in collections:
+        print(f"[QDRANT] Creating collection: {collection_name}")
+        client.create_collection(
+            collection_name=collection_name,
+            vectors_config={"size": 1, "distance": "Cosine"}
+        )
+    # Se file_content è file-like, leggilo
+    if hasattr(file_content, "read"):
+        print("[QDRANT] Reading file_content from file-like object")
+        file_content = file_content.read()
+    # Se il file è un PDF, estrai il testo
+    if file_name and file_name.lower().endswith(".pdf"):
+        print("[QDRANT] Extracting text from PDF")
+        file_content = extract_pdf_text(file_content)
+    # Se file_content è bytes, decodifica in stringa
+    if isinstance(file_content, bytes):
+        print("[QDRANT] Decoding file_content from bytes to string")
+        file_content = file_content.decode("utf-8", errors="replace")
+    print(f"[QDRANT] Length of file_content: {len(file_content)}")
+    chunks = [file_content[i:i+chunk_size] for i in range(0, len(file_content), chunk_size)]
+    print(f"[QDRANT] Number of chunks to upload: {len(chunks)}")
+    if not chunks:
+        print("[QDRANT] No chunks to upload (file vuoto?)")
+        return 0
+    points = []
+    for idx, chunk in enumerate(chunks):
+        point_id = str(uuid.uuid4())
+        payload = {
+            "user_id": user_id,
+            "file_id": file_id,
+            "chunk_index": idx,
+            "content": chunk,
+            "answer_ids": []
+        }
+        points.append(PointStruct(id=point_id, vector=[0.0], payload=payload))
+    batch_size = 1000
+    for i in range(0, len(points), batch_size):
+        print(f"[QDRANT] Upserting batch {i//batch_size+1} ({i}:{i+batch_size})")
+        client.upsert(collection_name=collection_name, points=points[i:i+batch_size])
+    print(f"[QDRANT] Uploaded {len(points)} chunks for file_id={file_id}")
+    return len(points)
+
+def get_file_ids_by_answer_id(answer_id, collection_name="files"):
+    print(f"[QDRANT] get_file_ids_by_answer_id called with answer_id={answer_id}")
+    client = QdrantClient(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT)
+    query = {
+        "must": [
+            {
+                "key": "answer_ids",
+                "match": {"value": answer_id}
+            }
+        ]
+    }
+    results = client.scroll(collection_name=collection_name, scroll_filter=query, limit=1000)
+    file_ids = set()
+    for point in results[0]:
+        file_ids.add(point.payload["file_id"])
+    print(f"[QDRANT] Found file_ids: {list(file_ids)}")
+    return list(file_ids)
+
+def get_file_ids_by_user_id(user_id, collection_name="files"):
+    print(f"[QDRANT] get_file_ids_by_user_id called with user_id={user_id}")
+    client = QdrantClient(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT)
+    client.get_collections()  # chiamata dummy per forzare il refresh della connessione
+    query = {
+        "must": [
+            {
+                "key": "user_id",
+                "match": {"value": user_id}
+            }
+        ]
+    }
+    results = client.scroll(collection_name=collection_name, scroll_filter=query, limit=1000)
+    file_ids = set()
+    for point in results[0]:
+        file_ids.add(point.payload["file_id"])
+    print(f"[QDRANT] Found file_ids: {list(file_ids)}")
+    return list(file_ids)
+
+def extract_pdf_text(file_content):
+    print("[QDRANT] extract_pdf_text called")
+    reader = PyPDF2.PdfReader(BytesIO(file_content))
+    text = ""
+    for page in reader.pages:
+        page_text = page.extract_text() or ""
+        print(f"[QDRANT] Extracted {len(page_text)} chars from page")
+        text += page_text
+    print(f"[QDRANT] Total extracted text length: {len(text)}")
+    return text
+````
+
+---
+
+_**User (2025-10-19 14:41Z)**_
+
+ok sembra che non riesce a creare la collezione
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````python
+def upload_file_chunks_to_qdrant(user_id, file_id, file_name, file_content, chunk_size=1024, collection_name="files"):
+    print(f"[QDRANT] upload_file_chunks_to_qdrant called with user_id={user_id}, file_id={file_id}, file_name={file_name}")
+    client = QdrantClient(
+        host=CURRENT_CONFIG.QDRANT_HOST,
+        port=CURRENT_CONFIG.QDRANT_PORT,
+        timeout=300.0
+    )
+    # Check if collection exists, create if not
+    try:
+        collections = [c.name for c in client.get_collections().collections]
+        print(f"[QDRANT] Existing collections: {collections}")
+        if collection_name not in collections:
+            print(f"[QDRANT] Creating collection: {collection_name}")
+            client.create_collection(
+                collection_name=collection_name,
+                vectors_config={"size": 1, "distance": "Cosine"}
+            )
+    except Exception as e:
+        print(f"[QDRANT][ERROR] Error checking/creating collection: {e}")
+        raise
+    # ...existing code...
+````
+
+Con questa modifica, se c'è un errore nella creazione della collezione, vedrai il messaggio di errore dettagliato nel log.  
+Controlla anche che Qdrant sia attivo e che tu abbia i permessi corretti per creare collezioni.
+
+---
+
+_**User (2025-10-19 14:43Z)**_
+
+[QDRANT] upload_file_chunks_to_qdrant called with user_id=1, file_id=2, file_name=test_tecnico_backend_software_engineer_1.pdf
+
+è fermo qui
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````python
+def upload_file_chunks_to_qdrant(user_id, file_id, file_name, file_content, chunk_size=1024, collection_name="files"):
+    print(f"[QDRANT] upload_file_chunks_to_qdrant called with user_id={user_id}, file_id={file_id}, file_name={file_name}")
+    client = QdrantClient(
+        host=CURRENT_CONFIG.QDRANT_HOST,
+        port=CURRENT_CONFIG.QDRANT_PORT,
+        timeout=300.0
+    )
+    # Check if collection exists, create if not
+    try:
+        print("[QDRANT] Checking collections...")
+        collections = [c.name for c in client.get_collections().collections]
+        print(f"[QDRANT] Existing collections: {collections}")
+        if collection_name not in collections:
+            print(f"[QDRANT] Creating collection: {collection_name}")
+            client.create_collection(
+                collection_name=collection_name,
+                vectors_config={"size": 1, "distance": "Cosine"}
+            )
+        print("[QDRANT] Collection check/creation complete.")
+    except Exception as e:
+        print(f"[QDRANT][ERROR] Error checking/creating collection: {e}")
+        raise
+    # ...existing code...
+````
+
+**Cosa fare:**  
+- Con questa aggiunta di log, puoi vedere se il blocco è su `get_collections()` o su `create_collection()`.
+- Se non vedi `[QDRANT] Checking collections...` o la riga successiva, il problema è nella connessione a Qdrant.
+- Se si blocca su `get_collections()`, verifica che Qdrant sia attivo e accessibile sulla porta e host configurati.
+- Se si blocca su `create_collection()`, potrebbe essere un problema di permessi o di configurazione di Qdrant.
+
+---
+
+_**User (2025-10-19 14:44Z)**_
+
+direi di sì
+[QDRANT] Checking collections...
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````python
+# ...existing code...
+def upload_file_chunks_to_qdrant(user_id, file_id, file_name, file_content, chunk_size=1024, collection_name="files"):
+    print(f"[QDRANT] upload_file_chunks_to_qdrant called with user_id={user_id}, file_id={file_id}, file_name={file_name}")
+    client = QdrantClient(
+        host=CURRENT_CONFIG.QDRANT_HOST,
+        port=CURRENT_CONFIG.QDRANT_PORT,
+        timeout=300.0
+    )
+    # Check if collection exists, create if not
+    try:
+        print("[QDRANT] Checking collections...")
+        collections = [c.name for c in client.get_collections().collections]
+        print(f"[QDRANT] Existing collections: {collections}")
+        if collection_name not in collections:
+            print(f"[QDRANT] Creating collection: {collection_name}")
+            client.create_collection(
+                collection_name=collection_name,
+                vectors_config={"size": 1, "distance": "Cosine"}
+            )
+        print("[QDRANT] Collection check/creation complete.")
+    except Exception as e:
+        print(f"[QDRANT][ERROR] Error checking/creating collection: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
+    # ...existing code...
+````
+
+Aggiunta:  
+- Stampa anche lo stack trace in caso di errore, così puoi vedere esattamente dove si blocca o fallisce.  
+- Se il log si ferma su `[QDRANT] Checking collections...`, il problema è nella connessione a Qdrant (server non raggiungibile, porta sbagliata, ecc.).  
+- Se si ferma dopo, il problema è nella creazione della collection.
+
+---
+
+_**User (2025-10-19 14:44Z)**_
+
+no basta stampe, ho visto che si ferma a  Checking collections..., cosa posso fare?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+Se il log si ferma su `[QDRANT] Checking collections...`, significa che la chiamata a `client.get_collections()` non restituisce mai o va in timeout.  
+Questo indica un problema di connessione tra la tua applicazione e Qdrant.
+
+**Cosa puoi fare:**
+
+1. **Verifica che Qdrant sia attivo**  
+   - Assicurati che il servizio Qdrant sia avviato e in ascolto sull’host e porta specificati in `CURRENT_CONFIG.QDRANT_HOST` e `CURRENT_CONFIG.QDRANT_PORT`.
+   - Prova a collegarti a Qdrant tramite browser o `curl`:
+     ```
+     curl http://localhost:6333/collections
+     ```
+     (sostituisci host/porta se diversi)
+
+2. **Controlla firewall e rete**  
+   - Se Qdrant è su un altro server, verifica che la porta sia aperta e raggiungibile dalla macchina dove gira il backend.
+
+3. **Verifica la configurazione**  
+   - Controlla che i valori di `CURRENT_CONFIG.QDRANT_HOST` e `CURRENT_CONFIG.QDRANT_PORT` siano corretti.
+
+4. **Prova a ridurre il timeout**  
+   - Se la connessione è bloccata, anche un timeout alto non aiuta. Prova con un timeout più basso (es. 10 secondi) per vedere se ottieni un errore più velocemente.
+
+5. **Controlla i log di Qdrant**  
+   - Guarda i log del server Qdrant per eventuali errori o richieste in arrivo.
+
+6. **Testa la connessione in uno script separato**  
+   - Prova a eseguire solo questa parte in uno script Python separato:
+     ```python
+     from qdrant_client import QdrantClient
+     client = QdrantClient(host="localhost", port=6333, timeout=10)
+     print(client.get_collections())
+     ```
+   - Se anche qui si blocca, il problema è sicuramente di rete o di servizio Qdrant.
+
+**Riassunto:**  
+Il problema non è nel codice, ma nella connessione tra backend e Qdrant.  
+Risolvi la connettività e la chiamata a `get_collections()` funzionerà.
+
+---
+
+_**User (2025-10-19 14:45Z)**_
+
+è in timeout effettivamente http://localhost:6333/collections
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+Il timeout su `http://localhost:6333/collections` indica che il server Qdrant **non è attivo** o **non è raggiungibile** sulla porta 6333.
+
+**Cosa fare:**
+1. **Avvia Qdrant**  
+   Assicurati che il servizio Qdrant sia avviato. Se usi Docker:
+   ```
+   docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant
+   ```
+   Oppure avvia il servizio come previsto dalla tua installazione.
+
+2. **Verifica che la porta sia libera**  
+   Assicurati che nessun altro processo occupi la porta 6333.
+
+3. **Controlla firewall e permessi**  
+   Se sei su un server remoto, verifica che la porta sia aperta.
+
+4. **Riprova la chiamata**  
+   Dopo aver avviato Qdrant, riprova:
+   ```
+   curl http://localhost:6333/collections
+   ```
+   Dovresti ricevere una risposta JSON.
+
+**Finché Qdrant non risponde, nessuna chiamata dal backend funzionerà.**  
+Il codice Python è corretto: risolvi il problema di avvio/connessione di Qdrant.
+
+---
+
+_**User (2025-10-19 14:45Z)**_
+
+ma vedo che su è il docker
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+Se Qdrant è in esecuzione su Docker, ma la tua applicazione non riesce a connettersi a `localhost:6333`, probabilmente:
+
+- **Il container non espone la porta correttamente**  
+  (devi usare `-p 6333:6333` nel comando `docker run`)
+
+- **La tua app e Qdrant sono in reti diverse**  
+  (se usi Docker Compose, assicurati che i servizi siano nella stessa rete)
+
+- **Stai usando `localhost` ma Qdrant è su un altro host**  
+  (ad esempio, se la tua app gira in un altro container, `localhost` si riferisce a quel container, non al tuo PC)
+
+**Cosa fare:**
+
+1. **Controlla il comando Docker**
+   ```
+   docker ps
+   ```
+   Verifica che Qdrant sia in ascolto su `0.0.0.0:6333->6333/tcp`.
+
+2. **Se la tua app è su host (non in Docker):**
+   - Usa `localhost:6333` solo se hai fatto `-p 6333:6333`.
+   - Prova:  
+     ```
+     curl http://localhost:6333/collections
+     ```
+     Deve rispondere.
+
+3. **Se la tua app è in un altro container:**
+   - Usa il nome del container Qdrant come host (es: `qdrant:6333`).
+   - Assicurati che entrambi i container siano nella stessa rete Docker.
+
+4. **Se usi Docker Compose:**  
+   - Usa il nome del servizio Qdrant come host nella config Python.
+
+**Esempio Docker run:**
+```
+docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant
+```
+
+**Esempio Docker Compose:**
+```yaml
+services:
+  qdrant:
+    image: qdrant/qdrant
+    ports:
+      - "6333:6333"
+  vulcano-be:
+    build: .
+    environment:
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+    depends_on:
+      - qdrant
+```
+
+**Riassunto:**  
+Verifica che la porta sia esposta e che l’host sia corretto rispetto a dove gira la tua app.  
+Se la tua app è in locale, `localhost:6333` va bene solo se hai fatto il port mapping.  
+Se la tua app è in Docker, usa il nome del container Qdrant come host.
+
+---
+
+_**User (2025-10-19 14:54Z)**_
+
+ mc: <ERROR> Unable to make bucket `vulcano-minio/user/`. Access Denied.
+
+ perché non mi fa creare ?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+```bash
+# ...existing code...
+mc alias set vulcano-minio http://minio:9000 "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
+
+# Debug: verifica accesso e utenti
+mc admin info vulcano-minio
+mc ls vulcano-minio
+
+echo "Creating bucket: vulcano-minio"
+mc mb vulcano-minio/user/
+
+# ...existing code...
+```
+
+**Motivi comuni per "Access Denied":**
+- Le variabili `${MINIO_ROOT_USER}` e `${MINIO_ROOT_PASSWORD}` non sono corrette o non corrispondono all'utente admin di MinIO.
+- Il servizio MinIO non è ancora pronto quando lo script parte (aumenta il `sleep` se serve).
+- L'utente non ha permessi per creare bucket.
+
+**Cosa fare:**
+1. Controlla che `${MINIO_ROOT_USER}` e `${MINIO_ROOT_PASSWORD}` siano valorizzate correttamente e corrispondano a quelle usate per avviare MinIO.
+2. Prova a lanciare manualmente i comandi `mc alias set` e `mc mb` nella shell del container per vedere l’errore dettagliato.
+3. Se usi Docker Compose, assicurati che le variabili d’ambiente siano uguali sia per MinIO che per lo script mc.
+4. Se MinIO è lento ad avviarsi, aumenta `sleep 5` a `sleep 15` o più.
+
+**Nota:**  
+Il nome del bucket deve essere solo `user` (non `vulcano-minio/user/`).  
+Quindi puoi anche usare:
+```bash
+mc mb vulcano-minio/user
+```
+Se il problema persiste, verifica i log di MinIO per dettagli.
+
+---
+
+_**User (2025-10-19 14:55Z)**_
+
+mc_container        | Added `vulcano-minio` successfully.
+mc_container        | mc: <ERROR> Unable to get service info. Access Denied.
+mc_container        | mc: <ERROR> Unable to list folder. Access Denied.
+mc_container        | Creating bucket: vulcano-minio
+mc_container        | mc: <ERROR> Unable to make bucket `vulcano-minio/user/`. Access Denied.
+mc_container        | Buckets created successfully.
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+```bash
+#!/bin/sh
+sleep 10
+echo "Creating buckets in MinIO..."
+mc alias set vulcano-minio http://minio:9000 "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
+
+# Rimuovi debug che fallisce se non hai permessi admin
+# mc admin info vulcano-minio
+# mc ls vulcano-minio
+
+echo "Creating bucket: user"
+mc mb vulcano-minio/user
+
+echo "Buckets created successfully."
+exit 0
+```
+
+**Note importanti:**
+- Il nome del bucket è solo `user`, non `vulcano-minio/user/`.
+- Se hai ancora "Access Denied", verifica che `${MINIO_ROOT_USER}` e `${MINIO_ROOT_PASSWORD}` siano uguali a quelli usati per avviare MinIO.
+- Puoi aumentare `sleep` se MinIO è lento ad avviarsi.
+- Se il problema persiste, controlla i log di MinIO e assicurati che l'utente abbia i permessi di root/admin.
+
+---
+
+_**User (2025-10-19 15:03Z)**_
+
+PS C:\Users\demig\Documents\vulcano\vulcano-be> python -m flask run   
+ * Serving Flask app 'vulcano_be.py'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+ERROR:vulcano_be:Exception on /files/list [GET]
+Traceback (most recent call last):
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpx\_transports\default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpx\_transports\default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpcore\_sync\connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpcore\_sync\connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+        pool_request.request
+    )
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpcore\_sync\connection.py", line 103, in handle_request
+    return self._connection.handle_request(request)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpcore\_sync\http11.py", line 136, in handle_request
+    raise exc
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpcore\_sync\http11.py", line 106, in handle_request
+    ) = self._receive_response_headers(**kwargs)
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpcore\_sync\http11.py", line 177, in _receive_response_headers
+    event = self._receive_event(timeout=timeout)
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpcore\_sync\http11.py", line 217, in _receive_event
+    data = self._network_stream.read(
+        self.READ_NUM_BYTES, timeout=timeout
+    )
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpcore\_backends\sync.py", line 126, in read
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.2544.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 162, in __exit__    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ReadTimeout: timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\qdrant_client\http\api_client.py", line 134, in send_inner
+    response = self._client.send(request)
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpx\_client.py", line 914, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpx\_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpx\_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpx\_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpx\_transports\default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.2544.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 162, in __exit__    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\httpx\_transports\default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\flask_cors\extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ~^^^^^^^^^^^^^^^^^
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\demig\Documents\vulcano\vulcano-be\utils\jwt_utils.py", line 52, in decorated
+    return f(*args, **kwargs)
+  File "C:\Users\demig\Documents\vulcano\vulcano-be\routes\file.py", line 72, in list_files
+    file_ids = get_file_ids_by_user_id(user_id)
+  File "C:\Users\demig\Documents\vulcano\vulcano-be\utils\qdrant_utils.py", line 68, in get_file_ids_by_user_id
+    client.get_collections()  # chiamata dummy per forzare il refresh della connessione
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\qdrant_client\qdrant_client.py", line 2210, in get_collections
+    return self._client.get_collections(**kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\qdrant_client\qdrant_remote.py", line 2571, in get_collections
+    self.http.collections_api.get_collections().result
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\qdrant_client\http\api\collections_api.py", line 330, in get_collections
+    return self._build_for_get_collections()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\qdrant_client\http\api\collections_api.py", line 159, in _build_for_get_collections
+    return self.api_client.request(
+           ~~~~~~~~~~~~~~~~~~~~~~~^
+        type_=m.InlineResponse2004,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        headers=headers if headers else None,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\qdrant_client\http\api_client.py", line 95, in request
+    return self.send(request, type_)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\qdrant_client\http\api_client.py", line 112, in send
+    response = self.middleware(request, self.send_inner)
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\qdrant_client\http\api_client.py", line 250, in __call__
+    return call_next(request)
+  File "C:\Users\demig\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\qdrant_client\http\api_client.py", line 136, in send_inner
+    raise ResponseHandlingException(e)
+qdrant_client.http.exceptions.ResponseHandlingException: timed out
+127.0.0.1 - - [19/Oct/2025 17:03:00] "GET /files/list HTTP/1.1" 500 -
+INFO:werkzeug:127.0.0.1 - - [19/Oct/2025 17:03:00] "GET /files/list HTTP/1.1" 500 -
+
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+Il timeout persiste perché il backend **non riesce a raggiungere Qdrant** su `localhost:6333`.
+
+**Cosa devi controllare:**
+
+1. **Qdrant è davvero in ascolto su localhost:6333?**
+   - Esegui da terminale:
+     ```
+     netstat -an | find "6333"
+     ```
+     oppure
+     ```
+     curl http://localhost:6333/collections
+     ```
+   - Se non risponde, Qdrant non è attivo o non è esposto su quella porta.
+
+2. **Se usi Docker:**
+   - Esegui:
+     ```
+     docker ps
+     ```
+     e verifica che la colonna PORTS mostri `0.0.0.0:6333->6333/tcp`.
+   - Se non vedi questa riga, il container non espone la porta correttamente. Devi avviarlo con:
+     ```
+     docker run -p 6333:6333 qdrant/qdrant
+     ```
+
+3. **Se la tua app è in un container Docker:**
+   - `localhost` dentro un container NON è il tuo PC, ma il container stesso.
+   - Usa il nome del servizio/container Qdrant come host (es: `qdrant:6333`) e assicurati che siano nella stessa rete Docker.
+
+4. **Controlla i log di Qdrant**
+   - Esegui:
+     ```
+     docker logs <nome_container_qdrant>
+     ```
+   - Verifica che non ci siano errori di avvio.
+
+5. **Controlla la configurazione**
+   - In `config.py`, assicurati che `QDRANT_HOST` e `QDRANT_PORT` siano corretti rispetto a dove gira Qdrant.
+
+**Riassunto:**  
+Il problema è di connettività tra backend e Qdrant, non di codice Python.  
+Risolvi la connessione (porta, host, Docker network) e il timeout sparirà.   - Verifica che non ci siano errori di avvio.
+
+5. **Controlla la configurazione**
+   - In `config.py`, assicurati che `QDRANT_HOST` e `QDRANT_PORT` siano corretti rispetto a dove gira Qdrant.
+
+**Riassunto:**  
+Il problema è di connettività tra backend e Qdrant, non di codice Python.  
+Risolvi la connessione (porta, host, Docker network) e il timeout sparirà.
+
+---
+
+_**User (2025-10-19 15:06Z)**_
+
+posso pulire la cache di python?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+Sì, puoi pulire la cache di Python eliminando le cartelle e i file `__pycache__` e i file `.pyc`.
+
+Ecco come fare da terminale nella root del tuo progetto:
+
+**Windows (PowerShell):**
+```powershell
+Get-ChildItem -Recurse -Include __pycache__,*.pyc | Remove-Item -Recurse -Force
+```
+
+**Oppure manualmente:**
+- Cancella tutte le cartelle `__pycache__` e i file `.pyc` nel tuo progetto.
+
+Non serve modificare nessun file Python per questa operazione.
+
+---
+
+_**User (2025-10-19 15:15Z)**_
+
+mi metti dei log in qdrant che posso lasciare?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````python
+# ...existing code...
+
+def upload_file_chunks_to_qdrant(user_id, file_id, file_content, chunk_size=1024, collection_name="files", file_name=None):
+    print(f"[QDRANT] upload_file_chunks_to_qdrant: user_id={user_id}, file_id={file_id}, file_name={file_name}")
+    client = QdrantClient(
+        host=CURRENT_CONFIG.QDRANT_HOST,
+        port=CURRENT_CONFIG.QDRANT_PORT,
+        timeout=300.0
+    )
+    # Check if collection exists, create if not
+    collections = [c.name for c in client.get_collections().collections]
+    print(f"[QDRANT] Existing collections: {collections}")
+    if collection_name not in collections:
+        print(f"[QDRANT] Creating collection: {collection_name}")
+        client.create_collection(
+            collection_name=collection_name,
+            vectors_config={"size": 1, "distance": "Cosine"}
+        )
+    # Se file_content è file-like, leggilo
+    if hasattr(file_content, "read"):
+        print("[QDRANT] Reading file_content from file-like object")
+        file_content = file_content.read()
+    # utilizza get_file_by_id di db_file_utils ed estrai file_name
+    if not file_name:
+        file_info = get_file_by_id(file_id)
+        print(f"[QDRANT] file_info from DB: {file_info}")
+        if file_info and isinstance(file_info, dict):
+            file_name = file_info.get("file_name")
+        elif file_info and isinstance(file_info, tuple):
+            file_name = file_info[1]
+    print(f"[QDRANT] Final file_name: {file_name}")
+    if file_name and file_name.lower().endswith(".pdf"):
+        print("[QDRANT] Extracting text from PDF")
+        file_content = extract_pdf_text(file_content)
+        print(f"[QDRANT] Extracted PDF text length: {len(file_content)}")
+    # Se file_content è bytes, decodifica in stringa
+    if isinstance(file_content, bytes):
+        print("[QDRANT] Decoding file_content from bytes to string")
+        file_content = file_content.decode("utf-8", errors="replace")
+    print(f"[QDRANT] Length of file_content: {len(file_content)}")
+    chunks = [file_content[i:i+chunk_size] for i in range(0, len(file_content), chunk_size)]
+    print(f"[QDRANT] Number of chunks to upload: {len(chunks)}")
+    if not chunks:
+        print("[QDRANT] No chunks to upload (file vuoto?)")
+        return 0
+    points = []
+    for idx, chunk in enumerate(chunks):
+        point_id = str(uuid.uuid4())
+        payload = {
+            "user_id": user_id,
+            "file_id": file_id,
+            "chunk_index": idx,
+            "content": chunk,
+            "answer_ids": []
+        }
+        points.append(PointStruct(id=point_id, vector=[0.0], payload=payload))
+    batch_size = 1000
+    for i in range(0, len(points), batch_size):
+        print(f"[QDRANT] Upserting batch {i//batch_size+1} ({i}:{i+batch_size})")
+        client.upsert(collection_name=collection_name, points=points[i:i+batch_size])
+    print(f"[QDRANT] Uploaded {len(points)} chunks for file_id={file_id}")
+    return len(points)
+
+def get_file_ids_by_answer_id(answer_id, collection_name="files"):
+    print(f"[QDRANT] get_file_ids_by_answer_id: answer_id={answer_id}")
+    client = QdrantClient(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT)
+    query = {
+        "must": [
+            {
+                "key": "answer_ids",
+                "match": {"value": answer_id}
+            }
+        ]
+    }
+    results = client.scroll(collection_name=collection_name, scroll_filter=query, limit=1000)
+    file_ids = set()
+    for point in results[0]:
+        file_ids.add(point.payload["file_id"])
+    print(f"[QDRANT] Found file_ids: {list(file_ids)}")
+    return list(file_ids)
+
+def get_file_ids_by_user_id(user_id, collection_name="files"):
+    print(f"[QDRANT] get_file_ids_by_user_id: user_id={user_id}")
+    client = QdrantClient(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT)
+    query = {
+        "must": [
+            {
+                "key": "user_id",
+                "match": {"value": user_id}
+            }
+        ]
+    }
+    results = client.scroll(collection_name=collection_name, scroll_filter=query, limit=1000)
+    file_ids = set()
+    for point in results[0]:
+        file_ids.add(point.payload["file_id"])
+    print(f"[QDRANT] Found file_ids: {list(file_ids)}")
+    return list(file_ids)
+
+def extract_pdf_text(file_content):
+    print("[QDRANT] extract_pdf_text called")
+    reader = PyPDF2.PdfReader(BytesIO(file_content))
+    text = ""
+    for page in reader.pages:
+        page_text = page.extract_text() or ""
+        print(f"[QDRANT] Extracted {len(page_text)} chars from page")
+        text += page_text
+    print(f"[QDRANT] Total extracted text length: {len(text)}")
+    return text
+````
+
+---
+
+_**User (2025-10-19 15:34Z)**_
+
+  File "C:\Users\demig\Documents\vulcano\vulcano-be\utils\qdrant_utils.py", line 88, in extract_pdf_text
+    reader = PyPDF2.PdfReader(BytesIO(file_content))
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````python
+# ...existing code...
+
+def extract_pdf_text(file_content):
+    # Se file_content è già BytesIO, non wrappare di nuovo
+    if isinstance(file_content, BytesIO):
+        pdf_stream = file_content
+    else:
+        pdf_stream = BytesIO(file_content)
+    reader = PyPDF2.PdfReader(pdf_stream)
+    text = ""
+    for page in reader.pages:
+        page_text = page.extract_text() or ""
+        print(f"[QDRANT] Extracted {len(page_text)} chars from page")
+        text += page_text
+    print(f"[QDRANT] Total extracted text length: {len(text)}")
+    return text
+# ...existing code...
+````
+
+---
+
+_**User (2025-10-19 15:35Z)**_
+
+mi fa ancora:
+
+  File "C:\Users\demig\Documents\vulcano\vulcano-be\routes\file.py", line 44, in upload_file
+    num_chunks = upload_file_chunks_to_qdrant(user_id, file_id, new_file_name, file_content)
+  File "C:\Users\demig\Documents\vulcano\vulcano-be\utils\qdrant_utils.py", line 30, in upload_file_chunks_to_qdrant
+    file_content = extract_pdf_text(file_content)
+  File "C:\Users\demig\Documents\vulcano\vulcano-be\utils\qdrant_utils.py", line 92, in extract_pdf_text
+    pdf_stream = BytesIO(file_content)
+TypeError: a bytes-like object is required, not 'str'
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````python
+# ...existing code...
+
+def upload_file_chunks_to_qdrant(user_id, file_id, file_content, chunk_size=1024, collection_name="files", file_name=None):
+    client = QdrantClient(url="http://127.0.0.1:6333", timeout=30.0)
+    # ...existing code...
+    # Se file_content è file-like, leggilo
+    if hasattr(file_content, "read"):
+        file_content = file_content.read()
+    # utilizza get_file_by_id di db_file_utils ed estrai file_name
+    if not file_name:
+        file_info = get_file_by_id(file_id)
+        if file_info and isinstance(file_info, dict):
+            file_name = file_info.get("file_name")
+        elif file_info and isinstance(file_info, tuple):
+            file_name = file_info[1]
+    print("File name:", file_name)
+    if file_name and file_name.lower().endswith(".pdf"):
+        # Se file_content è str, converti in bytes per l'estrazione PDF
+        if isinstance(file_content, str):
+            file_content = file_content.encode("utf-8", errors="replace")
+        file_content = extract_pdf_text(file_content)
+        print(file_content)  # Se qui vedi caratteri strani, il problema è nel PDF
+    # Se file_content è bytes, decodifica in stringa
+    if isinstance(file_content, bytes):
+        file_content = file_content.decode("utf-8", errors="replace")
+    # ...existing code...
+
+def extract_pdf_text(file_content):
+    # Se file_content è già BytesIO, non wrappare di nuovo
+    if isinstance(file_content, BytesIO):
+        pdf_stream = file_content
+    else:
+        pdf_stream = BytesIO(file_content)
+    reader = PyPDF2.PdfReader(pdf_stream)
+    text = ""
+    for page in reader.pages:
+        page_text = page.extract_text() or ""
+        print(f"[QDRANT] Extracted {len(page_text)} chars from page")
+        text += page_text
+    print(f"[QDRANT] Total extracted text length: {len(text)}")
+    return text
+# ...existing code...
+````
+
+---
+
+_**User (2025-10-19 15:47Z)**_
+
+mi riaggiungi un po' di log che posso lasciare su qdrant
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+````python
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import PointStruct
+import uuid
+from config import CURRENT_CONFIG
+from io import BytesIO
+import PyPDF2
+from utils.db.db_file_utils import get_file_by_id
+
+def upload_file_chunks_to_qdrant(user_id, file_id, file_name, file_content, chunk_size=1024, collection_name="files"):
+    print(f"[QDRANT] upload_file_chunks_to_qdrant: user_id={user_id}, file_id={file_id}, file_name={file_name}")
+    client = QdrantClient(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT, timeout=30.0)
+    collections = [c.name for c in client.get_collections().collections]
+    print(f"[QDRANT] Existing collections: {collections}")
+    if collection_name not in collections:
+        print(f"[QDRANT] Creating collection: {collection_name}")
+        client.create_collection(
+            collection_name=collection_name,
+            vectors_config={"size": 1, "distance": "Cosine"}
+        )
+    if hasattr(file_content, "read"):
+        print("[QDRANT] Reading file_content from file-like object")
+        file_content = file_content.read()
+    if file_name and file_name.lower().endswith(".pdf"):
+        print("[QDRANT] Extracting text from PDF")
+        file_content = extract_pdf_text(file_content)
+        print(f"[QDRANT] Extracted PDF text length: {len(file_content)}")
+    if isinstance(file_content, bytes):
+        print("[QDRANT] Decoding file_content from bytes to string")
+        file_content = file_content.decode("utf-8", errors="replace")
+    print(f"[QDRANT] Length of file_content: {len(file_content)}")
+    chunks = [file_content[i:i+chunk_size] for i in range(0, len(file_content), chunk_size)]
+    print(f"[QDRANT] Number of chunks to upload: {len(chunks)}")
+    if not chunks:
+        print("[QDRANT] No chunks to upload (file vuoto?)")
+        return 0
+    points = []
+    for idx, chunk in enumerate(chunks):
+        point_id = str(uuid.uuid4())
+        payload = {
+            "user_id": user_id,
+            "file_id": file_id,
+            "chunk_index": idx,
+            "content": chunk,
+            "answer_ids": []
+        }
+        points.append(PointStruct(id=point_id, vector=[0.0], payload=payload))
+    batch_size = 1000
+    for i in range(0, len(points), batch_size):
+        print(f"[QDRANT] Upserting batch {i//batch_size+1} ({i}:{i+batch_size})")
+        client.upsert(collection_name=collection_name, points=points[i:i+batch_size])
+    print(f"[QDRANT] Uploaded {len(points)} chunks for file_id={file_id}")
+    return len(points)
+
+def get_file_ids_by_answer_id(answer_id, collection_name="files"):
+    print(f"[QDRANT] get_file_ids_by_answer_id: answer_id={answer_id}")
+    client = QdrantClient(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT, timeout=30.0)
+    query = {
+        "must": [
+            {
+                "key": "answer_ids",
+                "match": {"value": answer_id}
+            }
+        ]
+    }
+    results = client.scroll(collection_name=collection_name, scroll_filter=query, limit=1000)
+    file_ids = set()
+    for point in results[0]:
+        file_ids.add(point.payload["file_id"])
+    print(f"[QDRANT] Found file_ids: {list(file_ids)}")
+    return list(file_ids)
+
+def get_file_ids_by_user_id(user_id, collection_name="files"):
+    print(f"[QDRANT] get_file_ids_by_user_id: user_id={user_id}")
+    client = QdrantClient(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT, timeout=30.0)
+    query = {
+        "must": [
+            {
+                "key": "user_id",
+                "match": {"value": user_id}
+            }
+        ]
+    }
+    results = client.scroll(collection_name=collection_name, scroll_filter=query, limit=1000)
+    file_ids = set()
+    for point in results[0]:
+        file_ids.add(point.payload["file_id"])
+    print(f"[QDRANT] Found file_ids: {list(file_ids)}")
+    return list(file_ids)
+
+def extract_pdf_text(file_content):
+    print("[QDRANT] extract_pdf_text called")
+    if isinstance(file_content, BytesIO):
+        pdf_stream = file_content
+    else:
+        pdf_stream = BytesIO(file_content)
+    reader = PyPDF2.PdfReader(pdf_stream)
+    text = ""
+    for page in reader.pages:
+        page_text = page.extract_text() or ""
+        print(f"[QDRANT] Extracted {len(page_text)} chars from page")
+        text += page_text
+    print(f"[QDRANT] Total extracted text length: {len(text)}")
+    return text
+````
+
+---
+
