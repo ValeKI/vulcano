@@ -40,7 +40,7 @@ Assicurati di avere [Docker](https://www.docker.com/get-started/) installato sul
 Apri un terminale, spostati nella cartella `vulcano-docker` ed esegui:
 
 ```sh
-docker compose --env-file .env.dev up --build
+docker compose --env-file .env.dev --profile dev up -d
 ```
 
 Questo comando avvierà tutti i servizi necessari con profilo di dev.
