@@ -34,11 +34,11 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   const login = (newToken: string) => {
-  localStorage.setItem("token", newToken);
-  setToken(newToken);
-  const decoded = jwtDecode<User>(newToken);
-  setUser(decoded);
-};
+    localStorage.setItem("token", newToken);
+    setToken(newToken);
+    const decoded = jwtDecode<User>(newToken);
+    setUser(decoded);
+  };
 
   useEffect(() => {
     const verifyToken = async () => {

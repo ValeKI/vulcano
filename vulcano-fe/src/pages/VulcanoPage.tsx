@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from 'react-router-dom';
 
 type VulcanoPageProps = {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 };
 
 const VulcanoPage: React.FC<VulcanoPageProps> = ({ children }) => {
