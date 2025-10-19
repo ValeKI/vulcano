@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import PdfFileDrop from "./PdfFileDrop";
 import { uploadFile } from "../services/FileService";
+import { insertQuestion, type InsertQuestionResponse } from "../services/ChatService";
 
 interface ChatInputProps {
     onHandlePdfSelect?: (file: File | null) => void;
+    onQuestionSubmit?: (data: InsertQuestionResponse) => void;
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({onHandlePdfSelect}) => {
+const ChatInput: React.FC<ChatInputProps> = ({onHandlePdfSelect, onQuestionSubmit}) => {
     const [input, setInput] = useState("");
     const [pdfFile, setPdfFile] = useState<File | null>(null);
     const [showPdfDrop, setShowPdfDrop] = useState(false);
@@ -16,8 +18,9 @@ const ChatInput: React.FC<ChatInputProps> = ({onHandlePdfSelect}) => {
         e.preventDefault();
         // Invia solo la domanda, mai il PDF
         if (input.trim()) {
-            console.log("Domanda inviata:", input);
+            const res = await insertQuestion({ content: input });
             setInput("");
+            onQuestionSubmit && onQuestionSubmit(res);
         }
     };
 
