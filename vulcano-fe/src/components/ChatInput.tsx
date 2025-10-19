@@ -19,8 +19,6 @@ const ChatInput: React.FC<ChatInputProps> = ({onHandlePdfSelect, onQuestionSubmi
         // Invia solo la domanda, mai il PDF
         if (input.trim()) {
             const res = await insertQuestion({ content: input });
-            console.log("Domanda inviata da ChatInput:", input);
-            console.log("Risposta ricevuta:", res);
             setInput("");
             onQuestionSubmit && onQuestionSubmit(res);
         }

@@ -2,11 +2,13 @@ import {
   getQuestionById as apiGetQuestionById,
   getQuestionsByUserId as apiGetQuestionsByUserId,
   insertQuestion as apiInsertQuestion,
+  getAnswerByQuestionId as apiGetAnswerByQuestionId,
   type Question,
   type InsertQuestionRequest,
   type GetQuestionByIdResponse,
   type GetQuestionsByUserIdResponse,
   type InsertQuestionResponse,
+  type GetAnswerByQuestionIdResponse,
 } from "../api/ChatApi";
 
 export const getQuestionById = async (questionId: number): Promise<GetQuestionByIdResponse> => {
@@ -21,10 +23,15 @@ export const insertQuestion = async (payload: InsertQuestionRequest): Promise<In
   return await apiInsertQuestion(payload);
 };
 
+export const getAnswerByQuestionId = async (questionId: number): Promise<GetAnswerByQuestionIdResponse> => {
+  return await apiGetAnswerByQuestionId(questionId);
+};
+
 export type {
   Question,
   InsertQuestionRequest,
   GetQuestionByIdResponse,
   GetQuestionsByUserIdResponse,
   InsertQuestionResponse,
+  GetAnswerByQuestionIdResponse,
 };

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import DocumentItem from './DocumentItem';
 
 export interface DocumentListFile {
@@ -15,18 +15,10 @@ interface DocumentListProps {
 
 const DocumentList: React.FC<DocumentListProps> = ({ listFiles = [] }) => {
 
-
-    useEffect(() => {
-        console.log('listFiles aggiornato:', listFiles);
-    }, [listFiles]);
-
-
-    const onViewFile = (fileName: string) => {
-        console.log(`Viewing file: ${fileName}`);
+    const onViewFile = (file_id: number) => {
     }
 
-    const onDownloadFile = (fileName: string) => {
-        console.log(`Downloading file: ${fileName}`);
+    const onDownloadFile = (file_id: number) => {
     }
 
     return (
@@ -35,8 +27,8 @@ const DocumentList: React.FC<DocumentListProps> = ({ listFiles = [] }) => {
                 <li key={file.file_id}>
                     <DocumentItem
                         name={file.file_name}
-                        onView={() => onViewFile(file.file_name)}
-                        onDownload={() => onDownloadFile(file.file_name)}
+                        onView={() => onViewFile(file.file_id)}
+                        onDownload={() => onDownloadFile(file.file_id)}
                         selected={!!file.selectByAnswer}
                     />
                 </li>

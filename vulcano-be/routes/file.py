@@ -84,6 +84,11 @@ def list_files_by_answer_id():
     if not answer_id:
         return jsonify({"error": "answer_id mancante"}), 400
 
+    try:
+        answer_id = int(answer_id)
+    except Exception:
+        return jsonify({"error": "answer_id non valido"}), 400
+
     file_ids = get_file_ids_by_answer_id(answer_id)
     files = []
     for file_id in file_ids:
