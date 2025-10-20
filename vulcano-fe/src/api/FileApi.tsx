@@ -11,7 +11,8 @@ export const uploadFile = async (payload: UploadFilePayload) => {
     headers: {
       "Content-Type": "multipart/form-data",
     },
-    withCredentials: true
+    withCredentials: true,
+    timeout: 10 * 60 * 1000
   });
 
   return response.data;

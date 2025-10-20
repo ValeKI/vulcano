@@ -49,7 +49,7 @@ def api_insert_question():
     ai_answer = read_from_redis_cache(content)
     if not ai_answer:
         # chiama AI per generare la risposta alla domanda inserita
-        ai_answer = call_ai_to_generate_answer(content, files_ids)
+        ai_answer = call_ai_to_generate_answer(content, user_id=user_id)
 
         # salva la risposta nel database
         question_id = insert_question(user_id, content)
