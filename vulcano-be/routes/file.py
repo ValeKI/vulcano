@@ -43,22 +43,23 @@ def upload_file():
 @file_bp.route("/download", methods=["GET"])
 @require_auth
 def download_file():
-    filename = request.args.get("filename")
-    if not filename:
-        return jsonify({"error": "Nome file mancante"}), 400
+    file_id = request.args.get("file_id")
+    if not file_id:
+        return jsonify({"error": "ID file mancante"}), 400
 
     user_id = get_user_id_from_request()
     if isinstance(user_id, tuple):
         return user_id
 
     try:
-        file_data = get_user_file(user_id, filename)
+        file_name = get_file_by_id(file_id)["file_name"]
+        file_data = get_user_file(user_id, file_name)
     except Exception:
         return jsonify({"error": "File non trovato"}), 404
 
     return send_file(
         BytesIO(file_data),
-        download_name=filename,
+        download_name=file_name,
         as_attachment=True
     )
 

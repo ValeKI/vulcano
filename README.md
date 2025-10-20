@@ -72,6 +72,7 @@ Login:
 
 ## Feature in sviluppo
 
+- Migliorare il visualizzatore PDF: aggiungere la navigazione tra pagine e una migliore esperienza di lettura
 - Generazione automatica di un titolo riassuntivo tramite AI per ogni domanda inviata nella chat
 - Gestione di domande e risposte di grandi dimensioni: se il contenuto supera una certa soglia, viene salvato come file su MinIO e indicizzato su Qdrant per facilitarne la ricerca e il recupero
 - Interfaccia frontend responsive ottimizzata per dispositivi mobili
@@ -80,3 +81,4 @@ Login:
 - Importazione di PDF e documenti XLSX da URL Confluence
 - Funzione di ricerca all’interno degli allegati
 - Gestione di ambienti multipli, ciascuno con i propri file dedicati
+- Modificare il viewer del pdf per visualizzarlo e navigare meglio

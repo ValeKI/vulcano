@@ -10,6 +10,7 @@ import { type Question } from '../services/ChatService';
 import { getQuestionsByUserId, type GetQuestionsByUserIdResponse, type InsertQuestionResponse } from '../api/ChatApi';
 import { getFilesByAnswerId } from '../services/FileService';
 import { getAnswerByQuestionId } from '../services/ChatService';
+import PdfViewer from '../components/PdfViewer';
 
 
 const Chat: React.FC = () => {
@@ -17,6 +18,7 @@ const Chat: React.FC = () => {
   const [listQuestions, setListQuestions] = useState<Question[]>([]);
   const [answer, setAnswer] = useState<string>("");
   const [question, setQuestion] = useState<string>("");
+  const [viewPdfFile, setViewPdfFile] = useState<Blob | null>(null);
 
   // Carica i file e le domande all'ingresso nella pagina
   useEffect(() => {
@@ -103,11 +105,20 @@ const Chat: React.FC = () => {
     );
   };
 
+  const closePdfViewer = () => {
+    setViewPdfFile(null);
+  };
+
+  
+  const handlePdfSelectView = (file: Blob) => {
+    setViewPdfFile(file);
+  };
+
   return (
     <VulcanoPage>
       <div className="chatbox-container">
         <div className="chatbox-left">
-          <DocumentList listFiles={listDocuments} />
+          <DocumentList listFiles={listDocuments} handleOnViewFile={handlePdfSelectView} />
         </div>
         <div className="chatbox-center">
           <div className="chatbox-responsewindow">
@@ -121,6 +132,14 @@ const Chat: React.FC = () => {
           <QuestionList questionList={listQuestions} onViewQuestion={handleViewQuestion}/>
         </div>
       </div>
+
+      {viewPdfFile && (
+        <div className="pdf-viewer-overlay">
+          <div className="pdf-viewer-modal">
+            <PdfViewer file={viewPdfFile as Blob} onClose={closePdfViewer}/>
+          </div>
+        </div>
+      )}
     </VulcanoPage>
   );
 }
