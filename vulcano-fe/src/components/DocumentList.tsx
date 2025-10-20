@@ -1,5 +1,6 @@
 import React from 'react';
 import DocumentItem from './DocumentItem';
+import { downloadFile } from '../services/FileService';
 
 export interface DocumentListFile {
     file_id: number;
@@ -11,14 +12,27 @@ export interface DocumentListFile {
 
 interface DocumentListProps {
     listFiles?: DocumentListFile[];
+    handleOnViewFile?: (file: Blob) => void;
 }
 
-const DocumentList: React.FC<DocumentListProps> = ({ listFiles = [] }) => {
+const DocumentList: React.FC<DocumentListProps> = ({ listFiles = [], handleOnViewFile }) => {
 
-    const onViewFile = (file_id: number) => {
+    const onViewFile = async (file_id: number) => {
+        const blob = await downloadFile(file_id);
+       
+        handleOnViewFile && handleOnViewFile(blob);
     }
 
-    const onDownloadFile = (file_id: number) => {
+    const onDownloadFile = async (file_name: string, file_id: number) => {
+        const blob = await downloadFile(file_id);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file_name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
     }
 
     return (
@@ -28,7 +42,7 @@ const DocumentList: React.FC<DocumentListProps> = ({ listFiles = [] }) => {
                     <DocumentItem
                         name={file.file_name}
                         onView={() => onViewFile(file.file_id)}
-                        onDownload={() => onDownloadFile(file.file_id)}
+                        onDownload={() => onDownloadFile(file.file_name, file.file_id)}
                         selected={!!file.selectByAnswer}
                     />
                 </li>

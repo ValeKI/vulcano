@@ -484,3 +484,44 @@ textarea {
   width: 100%;
   min-height: 3.5rem;
 }
+
+.pdf-viewer-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pdf-viewer-modal {
+  background: $color-bg-card;
+  border-radius: 10px;
+  padding: 1rem;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.25);
+  color: $color-text;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.pdf-viewer-modal button {
+  background: $color-primary;
+  color: $color-text-inverse;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5em 1em;
+  font-size: 1em;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  align-self: flex-end;
+  transition: background 0.2s;
+}
+.pdf-viewer-modal button:hover {
+  background: $color-primary-dark;
+}

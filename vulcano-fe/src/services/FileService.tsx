@@ -2,6 +2,7 @@ import {
   uploadFile as apiUploadFile,
   getUserFiles as apiGetUserFiles,
   getFilesByAnswerId as apiGetFilesByAnswerId,
+  downloadFile as apiDownloadFile,
   type UploadFilePayload,
   type GetUserFilesResponse,
   type GetFilesByAnswerIdResponse,
@@ -17,4 +18,8 @@ export const getUserFiles = async (): Promise<GetUserFilesResponse> => {
 
 export const getFilesByAnswerId = async (answerId: number): Promise<GetFilesByAnswerIdResponse> => {
   return await apiGetFilesByAnswerId(answerId);
-}
+};
+
+export const downloadFile = async (file_id: number): Promise<Blob> => {
+  return await apiDownloadFile(file_id);
+};

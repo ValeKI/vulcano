@@ -41,3 +41,11 @@ export const getFilesByAnswerId = async (answerId: number): Promise<GetFilesByAn
   const response = await apiClient.get(`/files/list_by_answer_id?answer_id=${answerId}`, { withCredentials: true });
   return response.data;
 };
+
+export const downloadFile = async (file_id: number): Promise<Blob> => {
+  const response = await apiClient.get(`/files/download?file_id=${file_id}`, {
+    responseType: "blob",
+    withCredentials: true
+  });
+  return response.data;
+};
