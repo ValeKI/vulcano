@@ -25,6 +25,13 @@ class BaseConfig:
     MINIO_BUCKET = os.getenv("MINIO_BUCKET")
     QDRANT_HOST = os.getenv("QDRANT_HOST")
     QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+    EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "1536"))
+    QDRANT_COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME", "files")
+    REWRITER_SYSTEM_PROMPT = os.getenv("REWRITER_SYSTEM_PROMPT")
+    RETRIEVAL_PROMPT_TEMPLATE = os.getenv("RETRIEVAL_PROMPT_TEMPLATE")
+    GENERATOR_SYSTEM_PROMPT = os.getenv("GENERATOR_SYSTEM_PROMPT")
 
 class DevelopmentConfig(BaseConfig):
     DEBUG = True
@@ -39,3 +46,6 @@ CONFIG_MAPPING = {
 }
 
 CURRENT_CONFIG = CONFIG_MAPPING.get(env, DevelopmentConfig)
+
+class Config:
+    pass  # Rimuovi le variabili prompt da qui

@@ -38,7 +38,7 @@ const ChatInput: React.FC<ChatInputProps> = ({onHandlePdfSelect, onQuestionSubmi
                 setShowPdfDrop(false);
                 error = true;
                 alert("Errore: caricamento file troppo lento o fallito.");
-            }, 2 * 60 * 1000);
+            }, 10 * 60 * 1000);
 
             // Simula avanzamento percentuale fino al 98%
             const progressInterval = setInterval(() => {
@@ -46,7 +46,7 @@ const ChatInput: React.FC<ChatInputProps> = ({onHandlePdfSelect, onQuestionSubmi
                     percent += 2;
                     setLoadingPercent(percent);
                 }
-            }, 400); // 400ms * 49 = ~20s
+            }, 2 * 60 * 1000); // 2 * 60 * 1000 = 2 minutes
 
             try {
                 await uploadFile({ file });
