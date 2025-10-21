@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, make_response
 from utils.jwt_utils import require_auth
 from services.auth_service import AuthService
 from dtos.common_dtos import ErrorResponseDTO
+from dtos.auth_dtos import UserDTO, LoginResponseDTO, RefreshResponseDTO, CheckResponseDTO, SignUpResponseDTO, ForgotPasswordResponseDTO, ResetPasswordResponseDTO
 from commands.auth_commands import LoginCommand, SignUpCommand, ForgotPasswordCommand, ResetPasswordCommand
 from queries.auth_queries import RefreshQuery, CheckQuery
 
@@ -30,30 +31,7 @@ def get_status_code(result, default=200):
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    """Effettua il login dell'utente.
-
-    ---
-    post:
-      summary: Effettua il login dell'utente.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                usernameOrEmail:
-                  type: string
-                password:
-                  type: string
-      responses:
-        200:
-          description: Login effettuato con successo.
-        400:
-          description: Credenziali mancanti.
-        401:
-          description: Credenziali non valide.
-    """
+    """Effettua il login dell'utente."""
     cmd = LoginCommand(**request.get_json())
     service = AuthService(request)
     response_dto = service.login_service(cmd)
@@ -74,17 +52,7 @@ def login():
 @auth_bp.route("/refresh", methods=["POST"])
 @require_auth
 def refresh():
-    """Rigenera il token di accesso tramite refresh token.
-
-    ---
-    post:
-      summary: Rigenera il token di accesso tramite refresh token.
-      responses:
-        200:
-          description: Token rigenerato con successo.
-        401:
-          description: Token di refresh non valido o mancante.
-    """
+    """Rigenera il token di accesso tramite refresh token."""
     query = RefreshQuery(refresh_token=request.cookies.get("refresh_token"))
     service = AuthService(request)
     response_dto = service.refresh_service(query)
@@ -94,17 +62,7 @@ def refresh():
 @auth_bp.route("/check", methods=["POST"])
 @require_auth
 def check():
-    """Verifica la validità dell'utente autenticato.
-
-    ---
-    post:
-      summary: Verifica la validità dell'utente autenticato.
-      responses:
-        200:
-          description: Utente valido.
-        404:
-          description: Utente non trovato.
-    """
+    """Verifica la validità dell'utente autenticato."""
     query = CheckQuery()
     service = AuthService(request)
     response_dto = service.check_service(query)
@@ -113,32 +71,7 @@ def check():
 
 @auth_bp.route("/signUp", methods=["POST"])
 def signUp():
-    """Registra un nuovo utente.
-
-    ---
-    post:
-      summary: Registra un nuovo utente.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                username:
-                  type: string
-                email:
-                  type: string
-                password:
-                  type: string
-      responses:
-        200:
-          description: Registrazione effettuata con successo.
-        400:
-          description: Dati mancanti.
-        409:
-          description: Utente già esistente.
-    """
+    """Registra un nuovo utente."""
     cmd = SignUpCommand(**request.get_json())
     service = AuthService(request)
     response_dto = service.signup_service(cmd)
@@ -147,26 +80,7 @@ def signUp():
 
 @auth_bp.route("/forgot-password", methods=["POST"])
 def forgot_password():
-    """Invia email di reset password.
-
-    ---
-    post:
-      summary: Invia email di reset password.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-      responses:
-        200:
-          description: Email inviata o utente non trovato.
-        400:
-          description: Email mancante.
-    """
+    """Invia email di reset password."""
     cmd = ForgotPasswordCommand(**request.get_json())
     service = AuthService(request)
     response_dto = service.forgot_password_service(cmd)
@@ -175,28 +89,7 @@ def forgot_password():
 
 @auth_bp.route("/reset-password", methods=["POST"])
 def reset_password():
-    """Aggiorna la password dell'utente tramite token di reset.
-
-    ---
-    post:
-      summary: Aggiorna la password dell'utente tramite token di reset.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                token:
-                  type: string
-                new_password:
-                  type: string
-      responses:
-        200:
-          description: Password aggiornata con successo.
-        400:
-          description: Token o nuova password mancanti, token scaduto o non valido.
-    """
+    """Aggiorna la password dell'utente tramite token di reset."""
     cmd = ResetPasswordCommand(**request.get_json())
     service = AuthService(request)
     response_dto = service.reset_password_service(cmd)

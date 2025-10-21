@@ -1,0 +1,552 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "Vulcano API",
+        "description": "Documentazione API per Vulcano",
+        "version": "1.0.0"
+    },
+    "tags": [
+        {"name": "Auth"},
+        {"name": "File"},
+        {"name": "Chat"}
+    ],
+    "schemes": ["http", "https"],
+    "paths": {
+        "/auth/login": {
+            "post": {
+                "tags": ["Auth"],
+                "summary": "Effettua il login dell'utente.",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "usernameOrEmail": {"type": "string", "example": "demo"},
+                                "password": {"type": "string", "example": "demo123"}
+                            },
+                            "required": ["usernameOrEmail", "password"]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login effettuato con successo.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "token": {"type": "string", "example": "jwt-token"},
+                                "user": {
+                                    "type": "object",
+                                    "properties": {
+                                        "username": {"type": "string", "example": "demo"},
+                                        "email": {"type": "string", "example": "demo@example.com"}
+                                    }
+                                },
+                                "refresh_token": {"type": "string", "example": "refresh-token"}
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Credenziali mancanti.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {"type": "string", "example": "Credenziali mancanti"}
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Credenziali non valide.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {"type": "string", "example": "Credenziali non valide"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "tags": ["Auth"],
+                "summary": "Rigenera il token di accesso tramite refresh token.",
+                "responses": {
+                    "200": {
+                        "description": "Token rigenerato con successo.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "token": {"type": "string", "example": "jwt-token"}
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token di refresh non valido o mancante.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {"type": "string", "example": "Token di refresh non valido o mancante"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/check": {
+            "post": {
+                "tags": ["Auth"],
+                "summary": "Verifica la validità dell'utente autenticato.",
+                "responses": {
+                    "200": {
+                        "description": "Utente valido.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "status": {"type": "string", "example": "ok"},
+                                "user": {
+                                    "type": "object",
+                                    "properties": {
+                                        "username": {"type": "string", "example": "demo"},
+                                        "email": {"type": "string", "example": "demo@example.com"}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Utente non trovato.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {"type": "string", "example": "Utente non trovato"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/signUp": {
+            "post": {
+                "tags": ["Auth"],
+                "summary": "Registra un nuovo utente.",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "username": {"type": "string", "example": "demo"},
+                                "email": {"type": "string", "example": "demo@example.com"},
+                                "password": {"type": "string", "example": "demo123"}
+                            },
+                            "required": ["username", "email", "password"]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Registrazione effettuata con successo.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "status": {"type": "string", "example": "ok"},
+                                "user": {
+                                    "type": "object",
+                                    "properties": {
+                                        "username": {"type": "string", "example": "demo"},
+                                        "email": {"type": "string", "example": "demo@example.com"}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Dati mancanti.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {"type": "string", "example": "Dati mancanti"}
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Utente già esistente.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {"type": "string", "example": "Utente già esistente"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/forgot-password": {
+            "post": {
+                "tags": ["Auth"],
+                "summary": "Invia email di reset password.",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "email": {"type": "string", "example": "demo@example.com"}
+                            },
+                            "required": ["email"]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Email inviata o utente non trovato.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "status": {"type": "string", "example": "ok"}
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Email mancante.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {"type": "string", "example": "Email mancante"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/reset-password": {
+            "post": {
+                "tags": ["Auth"],
+                "summary": "Aggiorna la password dell'utente tramite token di reset.",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "token": {"type": "string", "example": "reset-token"},
+                                "new_password": {"type": "string", "example": "nuovapassword123"}
+                            },
+                            "required": ["token", "new_password"]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Password aggiornata con successo.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "status": {"type": "string", "example": "ok"}
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Token o nuova password mancanti, token scaduto o non valido.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {"type": "string", "example": "Token o nuova password mancanti"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/files/upload": {
+            "post": {
+                "tags": ["File"],
+                "summary": "Carica un file per l'utente autenticato.",
+                "parameters": [
+                    {
+                        "in": "formData",
+                        "name": "file",
+                        "type": "file",
+                        "required": true,
+                        "description": "File da caricare"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "File caricato con successo.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "status": {"type": "string", "example": "ok"},
+                                "filename": {"type": "string", "example": "document.pdf"}
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Errore nell'upload del file.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {"type": "string", "example": "File vuoto"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/files/download": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Scarica un file dell'utente autenticato.",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "file_id",
+                        "type": "string",
+                        "required": true,
+                        "description": "ID del file da scaricare"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "File scaricato con successo.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "file_data": {"type": "string", "format": "byte", "example": "<base64 file>"},
+                                "file_name": {"type": "string", "example": "document.pdf"}
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "ID file mancante.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {"type": "string", "example": "ID file mancante"}
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "File non trovato.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {"type": "string", "example": "File non trovato"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/files/list": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Restituisce la lista dei file dell'utente autenticato.",
+                "responses": {
+                    "200": {
+                        "description": "Lista file restituita con successo.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "files": {
+                                    "type": "array",
+                                    "items": {"type": "object", "example": {"id": 1, "file_name": "document.pdf"}}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/files/list_by_answer_id": {
+            "get": {
+                "tags": ["File"],
+                "summary": "Restituisce la lista dei file associati a una risposta.",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "answer_id",
+                        "type": "string",
+                        "required": true,
+                        "description": "ID della risposta"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista file restituita con successo.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "files": {
+                                    "type": "array",
+                                    "items": {"type": "object", "example": {"id": 1, "file_name": "document.pdf"}}
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "answer_id mancante o non valido.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {"type": "string", "example": "answer_id mancante"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chat/questions": {
+            "post": {
+                "tags": ["Chat"],
+                "summary": "Inserisce una nuova domanda e genera la risposta.",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "content": {"type": "string", "example": "Qual è la capitale d'Italia?"}
+                            },
+                            "required": ["content"]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Domanda e risposta generate con successo.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "integer", "example": 1},
+                                "question": {"type": "string", "example": "Qual è la capitale d'Italia?"},
+                                "answer": {"type": "object", "example": {"answer": "Roma", "file_ids": ["file_123"]}},
+                                "file_ids": {"type": "array", "items": {"type": "string"}, "example": ["file_123"]}
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Nessun file disponibile per l'utente.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {"type": "string", "example": "Nessun file disponibile per l'utente"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chat/questions/user": {
+            "get": {
+                "tags": ["Chat"],
+                "summary": "Restituisce la lista delle domande dell'utente autenticato.",
+                "responses": {
+                    "200": {
+                        "description": "Lista domande restituita con successo.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "questions": {
+                                    "type": "array",
+                                    "items": {"type": "object", "example": {"id": 1, "content": "Domanda 1", "user_id": 2, "content_file_id": "file_123", "created_at": "2024-05-01T10:00:00"}}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chat/questions/{question_id}": {
+            "get": {
+                "tags": ["Chat"],
+                "summary": "Restituisce una domanda tramite ID.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "question_id",
+                        "type": "integer",
+                        "required": true,
+                        "description": "ID della domanda"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Domanda trovata.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "integer", "example": 1},
+                                "content": {"type": "string", "example": "Qual è la capitale d'Italia?"},
+                                "user_id": {"type": "integer", "example": 2},
+                                "content_file_id": {"type": "string", "example": "file_123"},
+                                "created_at": {"type": "string", "example": "2024-05-01T10:00:00"}
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Domanda non trovata.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {"type": "string", "example": "Question not found"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chat/answers/{question_id}": {
+            "get": {
+                "tags": ["Chat"],
+                "summary": "Restituisce la risposta associata a una domanda.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "question_id",
+                        "type": "integer",
+                        "required": true,
+                        "description": "ID della domanda"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Risposta trovata.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "integer", "example": 1},
+                                "question_id": {"type": "integer", "example": 1},
+                                "content": {"type": "string", "example": "Roma"},
+                                "content_file_id": {"type": "string", "example": "file_123"},
+                                "created_at": {"type": "string", "example": "2024-05-01T10:01:00"}
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Risposta non trovata.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {"type": "string", "example": "Answer not found"}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -26,27 +26,7 @@ def get_status_code(result, default=200):
 @file_bp.route("/upload", methods=["POST"])
 @require_auth
 def upload_file():
-    """Carica un file per l'utente autenticato.
-
-    ---
-    post:
-      summary: Carica un file per l'utente autenticato.
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  type: string
-                  format: binary
-      responses:
-        200:
-          description: File caricato con successo.
-        400:
-          description: Errore nell'upload del file.
-    """
+    """Carica un file per l'utente autenticato."""
     service = FileService(request)
     response_dto = service.upload_file()
     status = get_status_code(response_dto)
@@ -55,25 +35,7 @@ def upload_file():
 @file_bp.route("/download", methods=["GET"])
 @require_auth
 def download_file():
-    """Scarica un file dell'utente autenticato.
-
-    ---
-    get:
-      summary: Scarica un file dell'utente autenticato.
-      parameters:
-        - in: query
-          name: file_id
-          schema:
-            type: string
-          required: true
-      responses:
-        200:
-          description: File scaricato con successo.
-        400:
-          description: ID file mancante.
-        404:
-          description: File non trovato.
-    """
+    """Scarica un file dell'utente autenticato."""
     service = FileService(request)
     response_dto = service.download_file()
     status = get_status_code(response_dto)
@@ -88,15 +50,7 @@ def download_file():
 @file_bp.route("/list", methods=["GET"])
 @require_auth
 def list_files():
-    """Restituisce la lista dei file dell'utente autenticato.
-
-    ---
-    get:
-      summary: Restituisce la lista dei file dell'utente autenticato.
-      responses:
-        200:
-          description: Lista file restituita con successo.
-    """
+    """Restituisce la lista dei file dell'utente autenticato."""
     service = FileService(request)
     response_dto = service.list_files()
     status = get_status_code(response_dto)
@@ -105,23 +59,7 @@ def list_files():
 @file_bp.route("/list_by_answer_id", methods=["GET"])
 @require_auth
 def list_files_by_answer_id():
-    """Restituisce la lista dei file associati a una risposta.
-
-    ---
-    get:
-      summary: Restituisce la lista dei file associati a una risposta.
-      parameters:
-        - in: query
-          name: answer_id
-          schema:
-            type: string
-          required: true
-      responses:
-        200:
-          description: Lista file restituita con successo.
-        400:
-          description: answer_id mancante o non valido.
-    """
+    """Restituisce la lista dei file associati a una risposta."""
     service = FileService(request)
     response_dto = service.list_files_by_answer_id()
     status = get_status_code(response_dto)

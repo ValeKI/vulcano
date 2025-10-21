@@ -1,5 +1,5 @@
 from pydantic import BaseModel
 
 class UploadFileCommand(BaseModel):
-    # Ad esempio, se vuoi gestire altri dati oltre al file, aggiungili qui
+    """Command per la richiesta di upload file."""
     pass
