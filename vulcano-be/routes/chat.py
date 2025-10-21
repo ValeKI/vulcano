@@ -18,10 +18,12 @@ from utils.ai_utils import (
     call_ai_to_generate_answer
 )
 from utils.auth_utils import get_user_id_from_request
+from utils.jwt_utils import require_auth
 
 chat_bp = Blueprint('chat', __name__)
 
 @chat_bp.route('/questions/<int:question_id>', methods=['GET'])
+@require_auth
 def api_get_question_by_id(question_id):
     question = get_question_by_id(question_id)
     if question:
@@ -29,12 +31,14 @@ def api_get_question_by_id(question_id):
     return jsonify({"error": "Question not found"}), 404
 
 @chat_bp.route('/questions/user', methods=['GET'])
+@require_auth
 def api_list_questions_by_user_id():
     user_id = get_user_id_from_request()
     questions = list_questions_by_user_id(user_id)
     return jsonify({"questions": questions})
 
 @chat_bp.route('/questions', methods=['POST'])
+@require_auth
 def api_insert_question():
     data = request.json
     content = data.get('content')
@@ -67,6 +71,7 @@ def api_insert_question():
     return jsonify({"id": question_id, "question": content, "answer": ai_answer, "file_ids": ai_answer["file_ids"]})
 
 @chat_bp.route('/answers/<int:question_id>', methods=['GET'])
+@require_auth
 def api_get_answer_by_question_id(question_id):
     answer = get_answer_by_question_id(question_id)
     if answer:
