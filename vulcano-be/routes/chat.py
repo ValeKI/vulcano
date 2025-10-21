@@ -1,79 +1,59 @@
 from flask import Blueprint, request, jsonify
-from utils.db.db_question_utils import (
-    get_question_by_id,
-    list_questions_by_user_id,
-    insert_question
-)
-from utils.db.db_answer_utils import (
-    insert_answer,
-    get_answer_by_question_id
-)
-from utils.db.db_file_utils import list_files_for_user
-from utils.redis_utils import (
-    read_from_redis_cache,
-    write_to_redis_cache
-)
-from utils.qdrant_utils import add_answer_id_to_file_chunks
-from utils.ai_utils import (
-    call_ai_to_generate_answer
-)
-from utils.auth_utils import get_user_id_from_request
+from services.chat_service import ChatService
+from utils.auth_utils import AuthUtils
 from utils.jwt_utils import require_auth
+from dtos.common_dtos import ErrorResponseDTO
 
 chat_bp = Blueprint('chat', __name__)
+
+def get_status_code(result, default=200):
+    if not isinstance(result, dict):
+        return default
+    if "error" in result:
+        error_map = {
+            "Question not found": 404,
+            "Nessun file disponibile per l'utente": 400,
+            "Answer not found": 404,
+        }
+        return error_map.get(result["error"], 400)
+    return default
 
 @chat_bp.route('/questions/<int:question_id>', methods=['GET'])
 @require_auth
 def api_get_question_by_id(question_id):
-    question = get_question_by_id(question_id)
-    if question:
-        return jsonify(question)
-    return jsonify({"error": "Question not found"}), 404
+    print("[ROUTE] /questions/<id> called")
+    """Restituisce una domanda tramite ID."""
+    service = ChatService(request)
+    response_dto = service.get_question_by_id(question_id)
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
 
 @chat_bp.route('/questions/user', methods=['GET'])
 @require_auth
 def api_list_questions_by_user_id():
-    user_id = get_user_id_from_request()
-    questions = list_questions_by_user_id(user_id)
-    return jsonify({"questions": questions})
+    print("[ROUTE] /questions/user called")
+    """Restituisce la lista delle domande dell'utente autenticato."""
+    service = ChatService(request)
+    response_dto = service.list_questions_by_user_id()
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
 
 @chat_bp.route('/questions', methods=['POST'])
 @require_auth
 def api_insert_question():
-    data = request.json
-    content = data.get('content')
-    user_id = get_user_id_from_request()
-
-    files_ids = list_files_for_user(user_id)
-    if not files_ids:
-        return jsonify({"error": "Nessun file disponibile per l'utente"}), 400
-
-    # gestione su redis in lettura futura (cache delle risposte)
-    ai_answer = read_from_redis_cache(user_id, content)
-    if not ai_answer:
-        # chiama AI per generare la risposta alla domanda inserita
-        ai_answer = call_ai_to_generate_answer(content, user_id)
-
-        # salva la risposta nel database
-        question_id = insert_question(user_id, content)
-        answer_id = insert_answer(question_id, ai_answer["answer"])
-
-        # aggiorna qdrant
-        for file_id in ai_answer["file_ids"]:
-            add_answer_id_to_file_chunks(file_id, answer_id)
-
-        # gestione su redis in scrittura futura (cache delle risposte)
-        write_to_redis_cache(user_id, content, ai_answer, ai_answer["file_ids"], question_id, answer_id)
-    else:
-        question_id = ai_answer.get("question_id")
-        answer_id = ai_answer.get("answer_id")
-
-    return jsonify({"id": question_id, "question": content, "answer": ai_answer, "file_ids": ai_answer["file_ids"]})
+    print("[ROUTE] /questions POST called")
+    """Inserisce una nuova domanda e genera la risposta."""
+    service = ChatService(request)
+    response_dto = service.insert_question()
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
 
 @chat_bp.route('/answers/<int:question_id>', methods=['GET'])
 @require_auth
 def api_get_answer_by_question_id(question_id):
-    answer = get_answer_by_question_id(question_id)
-    if answer:
-        return jsonify(answer)
-    return jsonify({"error": "Answer not found"}), 404
+    print("[ROUTE] /answers/<id> called")
+    """Restituisce la risposta associata a una domanda."""
+    service = ChatService(request)
+    response_dto = service.get_answer_by_question_id(question_id)
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
