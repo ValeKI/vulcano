@@ -10,6 +10,11 @@ interface QuestionListProps {
 
 const QuestionList: React.FC<QuestionListProps> = ({ questionList = [], onViewQuestion, selectedQuestionId }) => {
     const [selectedId, setSelectedId] = React.useState<number | null>(selectedQuestionId || null);
+
+    React.useEffect(() => {
+        setSelectedId(selectedQuestionId ?? null);
+    }, [selectedQuestionId]);
+
     const handleViewQuestion = (questionId: number) => {
         onViewQuestion(questionId);
         setSelectedId(questionId);

@@ -22,8 +22,16 @@ const DocumentItem: React.FC<DocumentItemProps> = ({
   onView,
   onDownload
 }) => {
+  const itemRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (type === "question" && selected && itemRef.current) {
+      itemRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [selected, type]);
+
   return (
-    <div className={`file-view ${selected ? "selected" : ""}`}>
+    <div ref={itemRef} className={`file-view ${selected ? "selected" : ""}`}>
       <div
         className="file-icon cursor-pointer"
         onClick={onView}>

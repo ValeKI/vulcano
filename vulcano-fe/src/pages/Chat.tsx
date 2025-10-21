@@ -35,6 +35,9 @@ const Chat: React.FC = () => {
         // Ordina per id crescente
         const sortedQuestions = [...questionsRes.questions].sort((a, b) => a.id - b.id);
         setListQuestions(sortedQuestions);
+        if (sortedQuestions.length > 0) {
+          handleViewQuestion(sortedQuestions[sortedQuestions.length - 1].id);
+        }
       } catch (e) {
         console.error("Errore nel caricamento iniziale:", e);
       }
@@ -70,6 +73,7 @@ const Chat: React.FC = () => {
       if (question && answerRes) {
         setQuestion(question.content);
         setAnswer(answerRes.content);
+        setSelectedQuestionId(questionId);
 
         setListDocuments(prevDocs =>
           prevDocs.map(doc => ({
@@ -93,6 +97,7 @@ const Chat: React.FC = () => {
 
     setAnswer(answerText);
     setQuestion(question);
+    console.log("handleQuestionSubmit - Submitted Question ID:", id);
     setSelectedQuestionId(id);
 
     // Ordina per id crescente
@@ -136,8 +141,15 @@ const Chat: React.FC = () => {
       </div>
 
       {viewPdfFile && (
-        <div className="pdf-viewer-overlay">
-          <div className="pdf-viewer-modal">
+        <div
+          className="pdf-viewer-overlay"
+          onClick={closePdfViewer}
+          style={{ cursor: 'pointer' }}
+        >
+          <div
+            className="pdf-viewer-modal"
+            onClick={e => e.stopPropagation()}
+          >
             <PdfViewer file={viewPdfFile as Blob} onClose={closePdfViewer}/>
           </div>
         </div>

@@ -64,7 +64,7 @@ class QdrantUtils:
         all_points = []
         next_page_offset = None
         while True:
-            results = client.scroll(collection_name=collection_name, scroll_filter=q_filter, offset=next_page_offset)
+            results = client.scroll(collection_name=collection_name, scroll_filter=q_filter, offset=next_page_offset, limit=1000)
             points = results[0]
             print(f"[QDRANT] Retrieved {len(points)} points in this page for answer_id={answer_id}")
             all_points.extend(points)
