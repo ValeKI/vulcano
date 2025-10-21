@@ -19,6 +19,7 @@ const Chat: React.FC = () => {
   const [answer, setAnswer] = useState<string>("");
   const [question, setQuestion] = useState<string>("");
   const [viewPdfFile, setViewPdfFile] = useState<Blob | null>(null);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(null);
 
   // Carica i file e le domande all'ingresso nella pagina
   useEffect(() => {
@@ -82,7 +83,7 @@ const Chat: React.FC = () => {
     }
   };
 
-  const handleQuestionSubmit = async ({ question, answer, file_ids }: InsertQuestionResponse) => {
+  const handleQuestionSubmit = async ({ id, question, answer, file_ids }: InsertQuestionResponse) => {
     const res: GetQuestionsByUserIdResponse = await getQuestionsByUserId();
 
     // Fix: usa optional chaining per evitare errori se answer non è un oggetto
@@ -92,6 +93,7 @@ const Chat: React.FC = () => {
 
     setAnswer(answerText);
     setQuestion(question);
+    setSelectedQuestionId(id);
 
     // Ordina per id crescente
     const sortedQuestions = [...res.questions].sort((a, b) => a.id - b.id);
@@ -129,7 +131,7 @@ const Chat: React.FC = () => {
           </div>
         </div>
         <div className="chatbox-right">
-          <QuestionList questionList={listQuestions} onViewQuestion={handleViewQuestion}/>
+          <QuestionList questionList={listQuestions} onViewQuestion={handleViewQuestion} selectedQuestionId={selectedQuestionId} />
         </div>
       </div>
 
