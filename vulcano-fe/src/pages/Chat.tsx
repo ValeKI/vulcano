@@ -35,6 +35,9 @@ const Chat: React.FC = () => {
         // Ordina per id crescente
         const sortedQuestions = [...questionsRes.questions].sort((a, b) => a.id - b.id);
         setListQuestions(sortedQuestions);
+        if (sortedQuestions.length > 0) {
+          handleViewQuestion(sortedQuestions[sortedQuestions.length - 1].id);
+        }
       } catch (e) {
         console.error("Errore nel caricamento iniziale:", e);
       }
@@ -70,6 +73,7 @@ const Chat: React.FC = () => {
       if (question && answerRes) {
         setQuestion(question.content);
         setAnswer(answerRes.content);
+        setSelectedQuestionId(questionId);
 
         setListDocuments(prevDocs =>
           prevDocs.map(doc => ({
@@ -93,6 +97,7 @@ const Chat: React.FC = () => {
 
     setAnswer(answerText);
     setQuestion(question);
+    console.log("handleQuestionSubmit - Submitted Question ID:", id);
     setSelectedQuestionId(id);
 
     // Ordina per id crescente
