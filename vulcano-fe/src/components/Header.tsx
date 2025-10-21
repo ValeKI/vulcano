@@ -1,5 +1,5 @@
 import React from 'react';
-import QuestionMarkIcon from '../assets/question-mark.png';
+import VulcanoIcon from '../assets/vulcano.png';
 
 interface HeaderProps {
   isLoggedIn?: boolean;
@@ -9,7 +9,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ isLoggedIn = false, onLogout }) => (
   <div className="app-header">
     <div className="app-header-left">
-      <img src={QuestionMarkIcon} alt="Logo" className="app-header-logo" />
+      <img src={VulcanoIcon} alt="Logo" className="app-header-logo" />
     </div>
     <div className="app-header-right">
       {isLoggedIn && (
