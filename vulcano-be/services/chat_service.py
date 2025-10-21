@@ -11,12 +11,9 @@ from utils.db.db_answer_utils import (
     get_answer_by_question_id
 )
 from utils.db.db_file_utils import list_files_for_user
-from utils.redis_utils import (
-    read_from_redis_cache,
-    write_to_redis_cache
-)
-from utils.qdrant_utils import add_answer_id_to_file_chunks
-from utils.ai_utils import call_ai_to_generate_answer
+from utils.redis_utils import RedisUtils
+from utils.qdrant_utils import QdrantUtils
+from utils.ai_utils import AIUtils
 from utils.auth_utils import get_user_id_from_request
 
 class ChatService:
@@ -39,6 +36,7 @@ class ChatService:
             question_id (int): ID della domanda.
         Returns:
             dict: Domanda.
+            DTO: QuestionResponseDTO, ErrorResponseDTO
         """
         question = get_question_by_id(question_id)
         if question:
@@ -50,6 +48,7 @@ class ChatService:
         Restituisce la lista delle domande per l'utente corrente.
         Returns:
             dict: Lista domande.
+            DTO: ListQuestionsResponseDTO
         """
         user_id = get_user_id_from_request()
         questions = list_questions_by_user_id(user_id)
@@ -60,6 +59,7 @@ class ChatService:
         Inserisce una nuova domanda e genera la risposta.
         Returns:
             dict: Dettagli domanda/risposta.
+            DTO: InsertQuestionResponseDTO, ErrorResponseDTO
         """
         data = self.request.json
         content = data.get('content')
@@ -69,14 +69,17 @@ class ChatService:
         if not files_ids:
             return ErrorResponseDTO(error="Nessun file disponibile per l'utente")
 
-        ai_answer = read_from_redis_cache(user_id, content)
+        redis_utils = RedisUtils()
+        ai_utils = AIUtils()
+        qdrant_utils = QdrantUtils()
+        ai_answer = redis_utils.read_from_redis_cache(user_id, content)
         if not ai_answer:
-            ai_answer = call_ai_to_generate_answer(content, user_id)
+            ai_answer = ai_utils.call_ai_to_generate_answer(content, user_id)
             question_id = insert_question(user_id, content)
             answer_id = insert_answer(question_id, ai_answer["answer"])
             for file_id in ai_answer["file_ids"]:
-                add_answer_id_to_file_chunks(file_id, answer_id)
-            write_to_redis_cache(user_id, content, ai_answer, ai_answer["file_ids"], question_id, answer_id)
+                qdrant_utils.add_answer_id_to_file_chunks(file_id, answer_id)
+            redis_utils.write_to_redis_cache(user_id, content, ai_answer, ai_answer["file_ids"], question_id, answer_id)
         else:
             question_id = ai_answer.get("question_id")
             answer_id = ai_answer.get("answer_id")
@@ -95,6 +98,7 @@ class ChatService:
             question_id (int): ID della domanda.
         Returns:
             dict: Risposta.
+            DTO: AnswerResponseDTO, ErrorResponseDTO
         """
         answer = get_answer_by_question_id(question_id)
         if answer:

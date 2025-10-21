@@ -39,6 +39,7 @@ class AuthService:
         Effettua il login dell'utente.
         Returns:
             dict: Token, dati utente.
+            DTO: LoginResponseDTO, ErrorResponseDTO
         """
         if not cmd.usernameOrEmail or not cmd.password:
             return ErrorResponseDTO(error="Credenziali mancanti")
@@ -68,6 +69,7 @@ class AuthService:
         Rigenera il token di accesso tramite refresh token.
         Returns:
             dict: Nuovo token.
+            DTO: RefreshResponseDTO, ErrorResponseDTO
         """
         refresh_token = query.refresh_token
         if not refresh_token:
@@ -87,6 +89,7 @@ class AuthService:
         Verifica la validità dell'utente autenticato.
         Returns:
             dict: Stato e dati utente.
+            DTO: CheckResponseDTO, ErrorResponseDTO
         """
         user = get_user_from_request()
         if isinstance(user, tuple):  # Se è una response di errore
@@ -101,6 +104,7 @@ class AuthService:
         Registra un nuovo utente.
         Returns:
             dict: Stato e dati utente.
+            DTO: SignUpResponseDTO, ErrorResponseDTO
         """
         if not cmd.email or not cmd.password or not cmd.username:
             return ErrorResponseDTO(error="Dati mancanti")
@@ -117,6 +121,7 @@ class AuthService:
         Invia email di reset password.
         Returns:
             dict: Stato.
+            DTO: ForgotPasswordResponseDTO, ErrorResponseDTO
         """
         if not cmd.email:
             return ErrorResponseDTO(error="Email mancante")
@@ -139,6 +144,7 @@ class AuthService:
         Aggiorna la password dell'utente tramite token di reset.
         Returns:
             dict: Stato.
+            DTO: ResetPasswordResponseDTO, ErrorResponseDTO
         """
         if not cmd.token or not cmd.new_password:
             return ErrorResponseDTO(error="Token o nuova password mancanti")
