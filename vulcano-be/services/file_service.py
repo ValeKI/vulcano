@@ -1,0 +1,105 @@
+from flask import Request
+from io import BytesIO
+from utils.file_utils import get_unique_file_name, insert_new_file
+from utils.minio_utils import upload_user_file, get_user_file
+from utils.auth_utils import get_user_id_from_request
+from utils.db.db_file_utils import list_files_for_user, get_file_by_id
+from utils.qdrant_utils import upload_file_chunks_to_qdrant, get_file_ids_by_user_id, get_file_ids_by_answer_id
+
+class FileService:
+    """
+    Service per la gestione dei file utente: upload, download, lista e ricerca per answer.
+    """
+
+    def __init__(self, request: Request):
+        """
+        Inizializza il service con la richiesta Flask.
+        Args:
+            request (Request): Oggetto request Flask.
+        """
+        self.request = request
+
+    def upload_file(self):
+        """
+        Gestisce l'upload di un file per l'utente corrente.
+        Returns:
+            dict: Risultato.
+        """
+        if "file" not in self.request.files:
+            return {"error": "Nessun file inviato"}
+        file = self.request.files["file"]
+        if file.filename == "":
+            return {"error": "Nome file mancante"}
+        user_id = get_user_id_from_request()
+        if isinstance(user_id, tuple):
+            return user_id
+        new_file_name = get_unique_file_name(file.filename, user_id)
+        file_content = file.read()
+        if not file_content:
+            return {"error": "File vuoto"}
+        upload_user_file(user_id, new_file_name, file_content)
+        file_id = insert_new_file(new_file_name, user_id)
+        num_chunks = upload_file_chunks_to_qdrant(user_id, file_id, new_file_name, file_content)
+        if num_chunks == 0:
+            return {"error": "File vuoto o non processabile"}
+        return {"status": "ok", "filename": new_file_name}
+
+    def download_file(self):
+        """
+        Restituisce il file richiesto dall'utente.
+        Returns:
+            dict: File info.
+        """
+        file_id = self.request.args.get("file_id")
+        if not file_id:
+            return {"error": "ID file mancante"}
+        user_id = get_user_id_from_request()
+        if isinstance(user_id, tuple):
+            return user_id
+        try:
+            file_name = get_file_by_id(file_id)["file_name"]
+            file_data = get_user_file(user_id, file_name)
+        except Exception:
+            return {"error": "File non trovato"}
+        return {
+            "file_data": file_data,
+            "file_name": file_name
+        }
+
+    def list_files(self):
+        """
+        Restituisce la lista dei file dell'utente corrente.
+        Returns:
+            dict: Lista file.
+        """
+        user_id = get_user_id_from_request()
+        if isinstance(user_id, tuple):
+            return user_id
+        file_ids = get_file_ids_by_user_id(user_id)
+        files = []
+        for file_id in file_ids:
+            file_data = get_file_by_id(file_id)
+            if file_data:
+                files.append(file_data)
+        return {"files": files}
+
+    def list_files_by_answer_id(self):
+        """
+        Restituisce la lista dei file associati a una risposta.
+        Returns:
+            dict: Lista file.
+        """
+        answer_id = self.request.args.get("answer_id")
+        if not answer_id:
+            return {"error": "answer_id mancante"}
+        try:
+            answer_id = int(answer_id)
+        except Exception:
+            return {"error": "answer_id non valido"}
+        file_ids = get_file_ids_by_answer_id(answer_id)
+        files = []
+        for file_id in file_ids:
+            file_data = get_file_by_id(file_id)
+            if file_data:
+                files.append(file_data)
+        return {"files": files}
