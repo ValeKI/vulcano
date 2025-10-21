@@ -22,6 +22,7 @@ class FileService:
         self.request = request
 
     def upload_file(self):
+        print("[ROUTE] answer.upload_file called")
         """
         Gestisce l'upload di un file per l'utente corrente.
         Returns:
@@ -52,6 +53,7 @@ class FileService:
         return UploadFileResponseDTO(status="ok", filename=new_file_name)
 
     def download_file(self):
+        print("[ROUTE] answer.download_file called")
         """
         Restituisce il file richiesto dall'utente.
         Returns:
@@ -74,6 +76,7 @@ class FileService:
         return DownloadFileResponseDTO(file_data=file_data, file_name=file_name)
 
     def list_files(self):
+        print("[ROUTE] answer.list_files called")
         """
         Restituisce la lista dei file dell'utente corrente.
         Returns:
@@ -94,6 +97,7 @@ class FileService:
         return ListFilesResponseDTO(files=files)
 
     def list_files_by_answer_id(self):
+        print("[ROUTE] answer.list_files_by_answer_id called")
         """
         Restituisce la lista dei file associati a una risposta.
         Returns:

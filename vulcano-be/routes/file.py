@@ -27,6 +27,7 @@ def get_status_code(result, default=200):
 @file_bp.route("/upload", methods=["POST"])
 @require_auth
 def upload_file():
+    print("[ROUTE] /upload called")
     """Carica un file per l'utente autenticato."""
     service = FileService(request)
     response_dto = service.upload_file()
@@ -36,6 +37,7 @@ def upload_file():
 @file_bp.route("/download", methods=["GET"])
 @require_auth
 def download_file():
+    print("[ROUTE] /download called")
     """Scarica un file dell'utente autenticato."""
     service = FileService(request)
     response_dto = service.download_file()
@@ -51,6 +53,7 @@ def download_file():
 @file_bp.route("/list", methods=["GET"])
 @require_auth
 def list_files():
+    print("[ROUTE] /list called")
     """Restituisce la lista dei file dell'utente autenticato."""
     service = FileService(request)
     response_dto = service.list_files()
@@ -60,6 +63,7 @@ def list_files():
 @file_bp.route("/list_by_answer_id", methods=["GET"])
 @require_auth
 def list_files_by_answer_id():
+    print("[ROUTE] /list_by_answer_id called")
     """Restituisce la lista dei file associati a una risposta."""
     service = FileService(request)
     response_dto = service.list_files_by_answer_id()

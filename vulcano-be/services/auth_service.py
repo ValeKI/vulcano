@@ -27,6 +27,7 @@ class AuthService:
         self.request = request
 
     def login_service(self, cmd: LoginCommand):
+        print("[AUTH] login_service called")
         """
         Effettua il login dell'utente.
         Returns:
@@ -56,9 +57,11 @@ class AuthService:
         access_token = jwt_utils.generate_access_token(payload)
         refresh_token = jwt_utils.generate_refresh_token(payload)
         user_dto = UserDTO(username=user["username"], email=user["email"])
+        print("[AUTH] login_service completed")
         return LoginResponseDTO(token=access_token, refresh_token=refresh_token, user=user_dto)
 
     def refresh_service(self, query: RefreshQuery):
+        print("[AUTH] refresh_service called")
         """
         Rigenera il token di accesso tramite refresh token.
         Returns:
@@ -77,9 +80,11 @@ class AuthService:
             "username": decoded["username"],
             "email": decoded["email"]
         })
+        print("[AUTH] refresh_service completed")
         return RefreshResponseDTO(token=new_access_token)
 
     def check_service(self, query: CheckQuery):
+        print("[AUTH] check_service called")
         """
         Verifica la validità dell'utente autenticato.
         Returns:
@@ -94,9 +99,11 @@ class AuthService:
         db_user = db_user_utils.get_user_by_username_or_email(user["username"])
         if not db_user:
             return ErrorResponseDTO(error="Utente non trovato")
+        print("[AUTH] check_service completed")
         return CheckResponseDTO(status="ok", user=user)
 
     def signup_service(self, cmd: SignUpCommand):
+        print("[AUTH] signup_service called")
         """
         Registra un nuovo utente.
         Returns:
@@ -112,9 +119,11 @@ class AuthService:
         salt = bcrypt.gensalt()
         hashed_pw = bcrypt.hashpw(cmd.password.encode(), salt).decode('utf-8')
         db_user_utils.insert_user(cmd.username, cmd.email, hashed_pw)
+        print("[AUTH] signup_service completed")
         return SignUpResponseDTO(status="ok", user={"username": cmd.username, "email": cmd.email})
 
     def forgot_password_service(self, cmd: ForgotPasswordCommand):
+        print("[AUTH] forgot_password_service called")
         """
         Invia email di reset password.
         Returns:
@@ -137,9 +146,11 @@ class AuthService:
         db_user_utils.update_user_reset_token(user["id"], reset_token)
         email_utils = EmailUtils()
         email_utils.send_reset_email(cmd.email, reset_link)
+        print("[AUTH] forgot_password_service completed")
         return ForgotPasswordResponseDTO(status="ok")
 
     def reset_password_service(self, cmd: ResetPasswordCommand):
+        print("[AUTH] reset_password_service called")
         """
         Aggiorna la password dell'utente tramite token di reset.
         Returns:
@@ -162,4 +173,5 @@ class AuthService:
         rowcount = db_user_utils.update_user_password_and_reset_token(user_id, hashed_pw, cmd.token)
         if rowcount == 0:
             return ErrorResponseDTO(error="Token non valido")
+        print("[AUTH] reset_password_service completed")
         return ResetPasswordResponseDTO(status="ok")

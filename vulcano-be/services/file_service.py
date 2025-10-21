@@ -22,6 +22,7 @@ class FileService:
         self.request = request
 
     def upload_file(self):
+        print("[SERVICE] upload_file called")
         """
         Gestisce l'upload di un file per l'utente corrente.
         Returns:
@@ -51,9 +52,11 @@ class FileService:
         num_chunks = qdrant_utils.upload_file_chunks_to_qdrant(user_id, file_id, new_file_name, file_content)
         if num_chunks == 0:
             return ErrorResponseDTO(error="File vuoto o non processabile")
+        print("[SERVICE] upload_file completed")
         return UploadFileResponseDTO(status="ok", filename=new_file_name)
 
     def download_file(self):
+        print("[SERVICE] download_file called")
         """
         Restituisce il file richiesto dall'utente.
         Returns:
@@ -71,9 +74,11 @@ class FileService:
         file_name = db_file_utils.get_file_by_id(file_id)["file_name"]
         minio_utils = MinioUtils()
         file_data = minio_utils.get_user_file(user_id, file_name)
+        print("[SERVICE] download_file completed")
         return DownloadFileResponseDTO(file_data=file_data, file_name=file_name)
 
     def list_files(self):
+        print("[SERVICE] list_files called")
         """
         Restituisce la lista dei file dell'utente corrente.
         Returns:
@@ -92,9 +97,11 @@ class FileService:
             file_data = db_file_utils.get_file_by_id(file_id)
             if file_data:
                 files.append(file_data)
+        print("[SERVICE] list_files completed")
         return ListFilesResponseDTO(files=files)
 
     def list_files_by_answer_id(self):
+        print("[SERVICE] list_files_by_answer_id called")
         """
         Restituisce la lista dei file associati a una risposta.
         Returns:
@@ -116,4 +123,5 @@ class FileService:
             file_data = db_file_utils.get_file_by_id(file_id)
             if file_data:
                 files.append(file_data)
+        print("[SERVICE] list_files_by_answer_id completed")
         return ListFilesByAnswerIdResponseDTO(files=files)
