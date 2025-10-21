@@ -44,12 +44,11 @@ def api_insert_question():
     if not files_ids:
         return jsonify({"error": "Nessun file disponibile per l'utente"}), 400
 
-
     # gestione su redis in lettura futura (cache delle risposte)
-    ai_answer = read_from_redis_cache(content)
+    ai_answer = read_from_redis_cache(user_id, content)
     if not ai_answer:
         # chiama AI per generare la risposta alla domanda inserita
-        ai_answer = call_ai_to_generate_answer(content, user_id=user_id)
+        ai_answer = call_ai_to_generate_answer(content, user_id)
 
         # salva la risposta nel database
         question_id = insert_question(user_id, content)
@@ -60,7 +59,10 @@ def api_insert_question():
             add_answer_id_to_file_chunks(file_id, answer_id)
 
         # gestione su redis in scrittura futura (cache delle risposte)
-        write_to_redis_cache(content, ai_answer)
+        write_to_redis_cache(user_id, content, ai_answer, ai_answer["file_ids"], question_id, answer_id)
+    else:
+        question_id = ai_answer.get("question_id")
+        answer_id = ai_answer.get("answer_id")
 
     return jsonify({"id": question_id, "question": content, "answer": ai_answer, "file_ids": ai_answer["file_ids"]})
 
