@@ -62,6 +62,24 @@ services:
     networks:
       - backend
 
+  vulcano_fe:
+    build:
+      context: ./vulcano_fe
+    container_name: vulcano_fe_container
+    ports:
+      - "5173:5173"
+    networks:
+      - backend
+      
+  vulcano_be:
+    build:
+      context: ./vulcano_be
+    container_name: vulcano_be_container
+    ports:
+      - "5000:5000"
+    networks:
+      - backend
+
 volumes:
   postgres_data:
   qdrant_data:
