@@ -27,7 +27,7 @@ class DbQuestionUtils:
             (user_id,)
         )
         rows = cur.fetchall()
-        print(f"[DB] Questions fetched: {rows}")
+        # print(f"[DB] Questions fetched: {rows}")
         return [
             {
                 "id": row['id'],
