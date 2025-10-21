@@ -6,7 +6,7 @@ from utils.file_utils import get_unique_file_name, insert_new_file
 from utils.minio_utils import upload_user_file, get_user_file
 from utils.auth_utils import get_user_id_from_request
 from utils.db.db_file_utils import list_files_for_user, get_file_by_id
-from utils.qdrant_utils import upload_file_chunks_to_qdrant, get_file_ids_by_user_id, get_file_ids_by_answer_id
+from utils.qdrant_utils import QdrantUtils
 
 class FileService:
     """
@@ -26,6 +26,7 @@ class FileService:
         Gestisce l'upload di un file per l'utente corrente.
         Returns:
             dict: Risultato.
+            DTO: UploadFileResponseDTO, ErrorResponseDTO
         """
         if "file" not in self.request.files:
             return ErrorResponseDTO(error="Nessun file inviato")
@@ -41,7 +42,8 @@ class FileService:
             return ErrorResponseDTO(error="File vuoto")
         upload_user_file(user_id, new_file_name, file_content)
         file_id = insert_new_file(new_file_name, user_id)
-        num_chunks = upload_file_chunks_to_qdrant(user_id, file_id, new_file_name, file_content)
+        qdrant_utils = QdrantUtils()
+        num_chunks = qdrant_utils.upload_file_chunks_to_qdrant(user_id, file_id, new_file_name, file_content)
         if num_chunks == 0:
             return ErrorResponseDTO(error="File vuoto o non processabile")
         return UploadFileResponseDTO(status="ok", filename=new_file_name)
@@ -51,6 +53,7 @@ class FileService:
         Restituisce il file richiesto dall'utente.
         Returns:
             dict: File info.
+            DTO: DownloadFileResponseDTO, ErrorResponseDTO
         """
         file_id = self.request.args.get("file_id")
         if not file_id:
@@ -70,11 +73,13 @@ class FileService:
         Restituisce la lista dei file dell'utente corrente.
         Returns:
             dict: Lista file.
+            DTO: ListFilesResponseDTO, ErrorResponseDTO
         """
         user_id = get_user_id_from_request()
         if isinstance(user_id, tuple):
             return ErrorResponseDTO(error="Utente non autorizzato")
-        file_ids = get_file_ids_by_user_id(user_id)
+        qdrant_utils = QdrantUtils()
+        file_ids = qdrant_utils.get_file_ids_by_user_id(user_id)
         files = []
         for file_id in file_ids:
             file_data = get_file_by_id(file_id)
@@ -87,6 +92,7 @@ class FileService:
         Restituisce la lista dei file associati a una risposta.
         Returns:
             dict: Lista file.
+            DTO: ListFilesByAnswerIdResponseDTO, ErrorResponseDTO
         """
         answer_id = self.request.args.get("answer_id")
         if not answer_id:
@@ -95,7 +101,8 @@ class FileService:
             answer_id = int(answer_id)
         except Exception:
             return ErrorResponseDTO(error="answer_id non valido")
-        file_ids = get_file_ids_by_answer_id(answer_id)
+        qdrant_utils = QdrantUtils()
+        file_ids = qdrant_utils.get_file_ids_by_answer_id(answer_id)
         files = []
         for file_id in file_ids:
             file_data = get_file_by_id(file_id)
