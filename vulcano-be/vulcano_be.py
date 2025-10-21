@@ -1,4 +1,5 @@
-from flask import Flask
+import json
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flasgger import Swagger
 from routes.auth import auth_bp
@@ -8,8 +9,10 @@ from routes.chat import chat_bp
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=["http://localhost:3000", "http://localhost:5173"])
 
-# Inizializza Swagger
-swagger = Swagger(app)
+with open("swagger.json", "r", encoding="utf-8") as f:
+    swagger_template = json.load(f)
+
+swagger = Swagger(app, template=swagger_template)
 
 app.register_blueprint(auth_bp, url_prefix="/auth")
 app.register_blueprint(file_bp, url_prefix="/files")
