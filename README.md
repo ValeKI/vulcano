@@ -82,3 +82,11 @@ Login:
 - Funzione di ricerca all’interno degli allegati
 - Gestione di ambienti multipli, ciascuno con i propri file dedicati
 - Modificare il viewer del pdf per visualizzarlo e navigare meglio
+
+
+Problemi concorrenza:
+Accesso a Redis: operazioni concorrenti di lettura/scrittura su chiavi condivise possono causare race condition o dati incoerenti.
+Scrittura su MinIO: upload simultanei di file con lo stesso nome per lo stesso utente potrebbero sovrascrivere dati.
+Database: inserimenti o aggiornamenti concorrenti (ad esempio su utenti, file, domande/risposte) possono portare a duplicati, inconsistenza o deadlock se non gestiti correttamente.
+Qdrant: aggiornamenti simultanei ai payload dei punti (ad esempio aggiunta di answer_id) potrebbero causare perdita di dati se non gestiti in modo atomico.
+Gestione dei token JWT: refresh e invalidazione concorrente dei token potrebbero causare problemi di sicurezza.
