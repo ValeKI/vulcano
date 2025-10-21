@@ -668,3 +668,46 @@ Aggiungi un log per vedere il valore di `selectedQuestionId`, `question.id` e il
 
 ---
 
+_**User (2025-10-21 11:48Z)**_
+
+mi metti a tutti gli endpoint di chat.py @require_auth?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [chat.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/routes/chat.py)
+
+Aggiungi il decoratore `@require_auth` a tutti gli endpoint.
+
+````python
+from flask import Blueprint, request, jsonify
+# ...existing code...
+from utils.auth_utils import get_user_id_from_request
+from utils.jwt_utils import require_auth
+
+chat_bp = Blueprint('chat', __name__)
+
+@chat_bp.route('/questions/<int:question_id>', methods=['GET'])
+@require_auth
+def api_get_question_by_id(question_id):
+    # ...existing code...
+
+@chat_bp.route('/questions/user', methods=['GET'])
+@require_auth
+def api_list_questions_by_user_id():
+    # ...existing code...
+
+@chat_bp.route('/questions', methods=['POST'])
+@require_auth
+def api_insert_question():
+    # ...existing code...
+
+@chat_bp.route('/answers/<int:question_id>', methods=['GET'])
+@require_auth
+def api_get_answer_by_question_id(question_id):
+    # ...existing code...
+````
+
+---
+

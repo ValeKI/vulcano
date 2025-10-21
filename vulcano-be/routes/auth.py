@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, make_response
 import jwt
 from db import get_cursor
-from utils.jwt_utils import generate_refresh_token, generate_access_token, verify_token, verify_refresh_token
+from utils.jwt_utils import generate_refresh_token, generate_access_token, require_auth, verify_token, verify_refresh_token
 import bcrypt
 from utils.email_utils import send_reset_email
 from datetime import datetime, timedelta, timezone
@@ -69,6 +69,7 @@ def login():
 
 
 @auth_bp.route("/refresh", methods=["POST"])
+@require_auth
 def refresh():
     refresh_token = request.cookies.get("refresh_token")
     
@@ -88,6 +89,7 @@ def refresh():
     return jsonify({"token": new_access_token})
 
 @auth_bp.route("/check", methods=["POST"])
+@require_auth
 def check():
     user = get_user_from_request()
     if isinstance(user, tuple):  # Se è una response di errore
