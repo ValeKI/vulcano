@@ -8,9 +8,6 @@ from datapizza.modules.rewriters import ToolRewriter
 from datapizza.modules.prompt import ChatPromptTemplate
 from datapizza.core.vectorstore import VectorConfig
 from datapizza.embedders import ChunkEmbedder
-from datapizza.modules.parsers.docling import DoclingParser
-from datapizza.modules.splitters import NodeSplitter
-from datapizza.pipeline import IngestionPipeline
 from config import CURRENT_CONFIG
 
 openai_client = OpenAIClient(

@@ -22,7 +22,7 @@ class FileService:
         self.request = request
 
     def upload_file(self):
-        print("[SERVICE] upload_file called")
+        print("[FILE-SERVICE] upload_file called")
         """
         Gestisce l'upload di un file per l'utente corrente.
         Returns:
@@ -50,11 +50,11 @@ class FileService:
         num_chunks = qdrant_utils.upload_file_chunks_to_qdrant(user_id, file_id, new_file_name, file_content)
         if num_chunks == 0:
             return ErrorResponseDTO(error="File vuoto o non processabile")
-        print("[SERVICE] upload_file completed")
+        print("[FILE-SERVICE] upload_file completed")
         return UploadFileResponseDTO(status="ok", filename=new_file_name)
 
     def download_file(self):
-        print("[SERVICE] download_file called")
+        print("[FILE-SERVICE] download_file called")
         """
         Restituisce il file richiesto dall'utente.
         Returns:
@@ -72,34 +72,24 @@ class FileService:
         file_name = db_file_utils.get_file_by_id(file_id)["file_name"]
         minio_utils = MinioUtils()
         file_data = minio_utils.get_user_file(user_id, file_name)
-        print("[SERVICE] download_file completed")
+        print("[FILE-SERVICE] download_file completed")
         return DownloadFileResponseDTO(file_data=file_data, file_name=file_name)
 
     def list_files(self):
-        print("[SERVICE] list_files called")
-        """
-        Restituisce la lista dei file dell'utente corrente.
-        Returns:
-            dict: Lista file.
-            DTO: ListFilesResponseDTO, ErrorResponseDTO
-        """
+        print("[FILE-SERVICE] list_files called")
         auth_utils = AuthUtils(self.request)
         user_id = auth_utils.get_user_id_from_request()
         if user_id is None:
+            print("[FILE-SERVICE] Utente non autorizzato")
             return jsonify({"error": "Utente non autorizzato"}), 401
         qdrant_utils = QdrantUtils()
         db_file_utils = DbFileUtils()
-        file_ids = qdrant_utils.get_file_ids_by_user_id(user_id)
-        files = []
-        for file_id in file_ids:
-            file_data = db_file_utils.get_file_by_id(file_id)
-            if file_data:
-                files.append(file_data)
-        print("[SERVICE] list_files completed")
+        files = db_file_utils.list_files_by_user_id(user_id)
+        print(f"[FILE-SERVICE] list_files completed, files found: {len(files)}")
         return ListFilesResponseDTO(files=files)
 
     def list_files_by_answer_id(self):
-        print("[SERVICE] list_files_by_answer_id called")
+        print("[FILE-SERVICE] list_files_by_answer_id called")
         """
         Restituisce la lista dei file associati a una risposta.
         Returns:
@@ -121,5 +111,5 @@ class FileService:
             file_data = db_file_utils.get_file_by_id(file_id)
             if file_data:
                 files.append(file_data)
-        print("[SERVICE] list_files_by_answer_id completed")
+        print("[FILE-SERVICE] list_files_by_answer_id completed")
         return ListFilesByAnswerIdResponseDTO(files=files)

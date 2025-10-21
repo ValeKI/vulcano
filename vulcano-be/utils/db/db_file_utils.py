@@ -47,8 +47,8 @@ class DbFileUtils:
             return result.get('count', 0)
         return result[0]
 
-    def list_files_for_user(self, user_id):
-        print(f"[DB] list_files_for_user: user_id={user_id}")
+    def list_file_ids_for_user(self, user_id):
+        print(f"[DB] list_file_ids_for_user: user_id={user_id}")
         cur = get_cursor()
         cur.execute(
             "SELECT file_id, file_name, format FROM files WHERE user_id=%s",
@@ -69,4 +69,15 @@ class DbFileUtils:
         )
         result = cur.fetchone()
         print(f"[DB] File fetched: {result}")
+        return result
+
+    def list_files_by_user_id(self, user_id):
+        print(f"[DB] list_files_by_user_id: user_id={user_id}")
+        cur = get_cursor()
+        cur.execute(
+            "SELECT file_id, file_name, user_id, format FROM files WHERE user_id=%s",
+            (user_id,)
+        )
+        result = cur.fetchall()
+        print(f"[DB] Files fetched: {result}")
         return result
