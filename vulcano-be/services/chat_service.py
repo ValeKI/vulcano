@@ -1,4 +1,6 @@
 from flask import Request
+from dtos.common_dtos import ErrorResponseDTO
+from dtos.chat_dtos import QuestionResponseDTO, ListQuestionsResponseDTO, InsertQuestionResponseDTO, AnswerResponseDTO
 from utils.db.db_question_utils import (
     get_question_by_id,
     list_questions_by_user_id,
@@ -40,8 +42,8 @@ class ChatService:
         """
         question = get_question_by_id(question_id)
         if question:
-            return question
-        return {"error": "Question not found"}
+            return QuestionResponseDTO(**question)
+        return ErrorResponseDTO(error="Question not found")
 
     def list_questions_by_user_id(self):
         """
@@ -51,7 +53,7 @@ class ChatService:
         """
         user_id = get_user_id_from_request()
         questions = list_questions_by_user_id(user_id)
-        return {"questions": questions}
+        return ListQuestionsResponseDTO(questions=questions)
 
     def insert_question(self):
         """
@@ -65,7 +67,7 @@ class ChatService:
 
         files_ids = list_files_for_user(user_id)
         if not files_ids:
-            return {"error": "Nessun file disponibile per l'utente"}
+            return ErrorResponseDTO(error="Nessun file disponibile per l'utente")
 
         ai_answer = read_from_redis_cache(user_id, content)
         if not ai_answer:
@@ -79,12 +81,12 @@ class ChatService:
             question_id = ai_answer.get("question_id")
             answer_id = ai_answer.get("answer_id")
 
-        return {
-            "id": question_id,
-            "question": content,
-            "answer": ai_answer,
-            "file_ids": ai_answer["file_ids"]
-        }
+        return InsertQuestionResponseDTO(
+            id=question_id,
+            question=content,
+            answer=ai_answer,
+            file_ids=ai_answer["file_ids"]
+        )
 
     def get_answer_by_question_id(self, question_id: int):
         """
@@ -96,5 +98,5 @@ class ChatService:
         """
         answer = get_answer_by_question_id(question_id)
         if answer:
-            return answer
-        return {"error": "Answer not found"}
+            return AnswerResponseDTO(**answer)
+        return ErrorResponseDTO(error="Answer not found")

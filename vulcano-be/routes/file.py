@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, send_file
 from io import BytesIO
 from utils.jwt_utils import require_auth
 from services.file_service import FileService
+from dtos.common_dtos import ErrorResponseDTO
 
 file_bp = Blueprint("files", __name__)
 
@@ -47,9 +48,9 @@ def upload_file():
           description: Errore nell'upload del file.
     """
     service = FileService(request)
-    result = service.upload_file()
-    status = get_status_code(result)
-    return jsonify(result), status
+    response_dto = service.upload_file()
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
 
 @file_bp.route("/download", methods=["GET"])
 @require_auth
@@ -74,15 +75,15 @@ def download_file():
           description: File non trovato.
     """
     service = FileService(request)
-    result = service.download_file()
-    status = get_status_code(result)
-    if "file_data" in result and "file_name" in result:
+    response_dto = service.download_file()
+    status = get_status_code(response_dto)
+    if hasattr(response_dto, "file_data") and hasattr(response_dto, "file_name"):
         return send_file(
-            BytesIO(result["file_data"]),
-            download_name=result["file_name"],
+            BytesIO(response_dto.file_data),
+            download_name=response_dto.file_name,
             as_attachment=True
         )
-    return jsonify(result), status
+    return jsonify(response_dto.model_dump()), status
 
 @file_bp.route("/list", methods=["GET"])
 @require_auth
@@ -97,9 +98,9 @@ def list_files():
           description: Lista file restituita con successo.
     """
     service = FileService(request)
-    result = service.list_files()
-    status = get_status_code(result)
-    return jsonify(result), status
+    response_dto = service.list_files()
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
 
 @file_bp.route("/list_by_answer_id", methods=["GET"])
 @require_auth
@@ -122,6 +123,6 @@ def list_files_by_answer_id():
           description: answer_id mancante o non valido.
     """
     service = FileService(request)
-    result = service.list_files_by_answer_id()
-    status = get_status_code(result)
-    return jsonify(result), status
+    response_dto = service.list_files_by_answer_id()
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
