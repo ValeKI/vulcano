@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, send_file
 from io import BytesIO
 from utils.jwt_utils import require_auth
+from utils.auth_utils import AuthUtils
 from services.file_service import FileService
 from dtos.common_dtos import ErrorResponseDTO
 

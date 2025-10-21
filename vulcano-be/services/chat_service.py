@@ -1,4 +1,4 @@
-from flask import Request
+from flask import Request, jsonify
 from dtos.common_dtos import ErrorResponseDTO
 from dtos.chat_dtos import QuestionResponseDTO, ListQuestionsResponseDTO, InsertQuestionResponseDTO, AnswerResponseDTO
 from utils.db.db_question_utils import (
@@ -14,7 +14,7 @@ from utils.db.db_file_utils import list_files_for_user
 from utils.redis_utils import RedisUtils
 from utils.qdrant_utils import QdrantUtils
 from utils.ai_utils import AIUtils
-from utils.auth_utils import get_user_id_from_request
+from utils.auth_utils import AuthUtils
 
 class ChatService:
     """
@@ -50,7 +50,10 @@ class ChatService:
             dict: Lista domande.
             DTO: ListQuestionsResponseDTO
         """
-        user_id = get_user_id_from_request()
+        auth_utils = AuthUtils(self.request)
+        user_id = auth_utils.get_user_id_from_request()
+        if user_id is None:
+            return jsonify({"error": "Utente non autorizzato"}), 401
         questions = list_questions_by_user_id(user_id)
         return ListQuestionsResponseDTO(questions=questions)
 
@@ -63,7 +66,10 @@ class ChatService:
         """
         data = self.request.json
         content = data.get('content')
-        user_id = get_user_id_from_request()
+        auth_utils = AuthUtils(self.request)
+        user_id = auth_utils.get_user_id_from_request()
+        if user_id is None:
+            return jsonify({"error": "Utente non autorizzato"}), 401
 
         files_ids = list_files_for_user(user_id)
         if not files_ids:
