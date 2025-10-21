@@ -1,10 +1,10 @@
-from flask import Request
+from flask import Request, jsonify
 from io import BytesIO
 from dtos.common_dtos import ErrorResponseDTO
 from dtos.file_dtos import UploadFileResponseDTO, DownloadFileResponseDTO, ListFilesResponseDTO, ListFilesByAnswerIdResponseDTO
-from utils.file_utils import get_unique_file_name, insert_new_file
-from utils.minio_utils import upload_user_file, get_user_file
-from utils.auth_utils import get_user_id_from_request
+from utils.file_utils import FileUtils
+from utils.minio_utils import MinioUtils
+from utils.auth_utils import AuthUtils
 from utils.db.db_file_utils import list_files_for_user, get_file_by_id
 from utils.qdrant_utils import QdrantUtils
 
@@ -33,15 +33,18 @@ class FileService:
         file = self.request.files["file"]
         if file.filename == "":
             return ErrorResponseDTO(error="Nome file mancante")
-        user_id = get_user_id_from_request()
-        if isinstance(user_id, tuple):
-            return user_id
-        new_file_name = get_unique_file_name(file.filename, user_id)
+        auth_utils = AuthUtils(self.request)
+        user_id = auth_utils.get_user_id_from_request()
+        if user_id is None:
+            return jsonify({"error": "Utente non autorizzato"}), 401
+        file_utils = FileUtils()
+        new_file_name = file_utils.get_unique_file_name(file.filename, user_id)
         file_content = file.read()
         if not file_content:
             return ErrorResponseDTO(error="File vuoto")
-        upload_user_file(user_id, new_file_name, file_content)
-        file_id = insert_new_file(new_file_name, user_id)
+        minio_utils = MinioUtils()
+        minio_utils.upload_user_file(user_id, new_file_name, file_content)
+        file_id = file_utils.insert_new_file(new_file_name, user_id)
         qdrant_utils = QdrantUtils()
         num_chunks = qdrant_utils.upload_file_chunks_to_qdrant(user_id, file_id, new_file_name, file_content)
         if num_chunks == 0:
@@ -58,12 +61,14 @@ class FileService:
         file_id = self.request.args.get("file_id")
         if not file_id:
             return ErrorResponseDTO(error="ID file mancante")
-        user_id = get_user_id_from_request()
-        if isinstance(user_id, tuple):
-            return ErrorResponseDTO(error="Utente non autorizzato")
+        auth_utils = AuthUtils(self.request)
+        user_id = auth_utils.get_user_id_from_request()
+        if user_id is None:
+            return jsonify({"error": "Utente non autorizzato"}), 401
         try:
             file_name = get_file_by_id(file_id)["file_name"]
-            file_data = get_user_file(user_id, file_name)
+            minio_utils = MinioUtils()
+            file_data = minio_utils.get_user_file(user_id, file_name)
         except Exception:
             return ErrorResponseDTO(error="File non trovato")
         return DownloadFileResponseDTO(file_data=file_data, file_name=file_name)
@@ -75,9 +80,10 @@ class FileService:
             dict: Lista file.
             DTO: ListFilesResponseDTO, ErrorResponseDTO
         """
-        user_id = get_user_id_from_request()
-        if isinstance(user_id, tuple):
-            return ErrorResponseDTO(error="Utente non autorizzato")
+        auth_utils = AuthUtils(self.request)
+        user_id = auth_utils.get_user_id_from_request()
+        if user_id is None:
+            return jsonify({"error": "Utente non autorizzato"}), 401
         qdrant_utils = QdrantUtils()
         file_ids = qdrant_utils.get_file_ids_by_user_id(user_id)
         files = []

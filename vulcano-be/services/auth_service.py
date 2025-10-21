@@ -1,11 +1,11 @@
-from flask import Request
+from flask import Request, jsonify
 import jwt
 import bcrypt
 from datetime import datetime, timedelta, timezone
 from db import get_cursor
 from config import CURRENT_CONFIG
-from utils.jwt_utils import generate_refresh_token, generate_access_token, require_auth, verify_token, verify_refresh_token
-from utils.email_utils import send_reset_email
+from utils.jwt_utils import JwtUtils
+from utils.email_utils import EmailUtils
 from utils.db.db_user_utils import (
     get_user_by_username_or_email,
     get_user_by_email,
@@ -15,7 +15,7 @@ from utils.db.db_user_utils import (
     update_user_reset_token,
     get_user_reset_token
 )
-from utils.auth_utils import get_user_from_request
+from utils.auth_utils import AuthUtils
 from dtos.common_dtos import ErrorResponseDTO
 from dtos.auth_dtos import UserDTO, LoginResponseDTO, RefreshResponseDTO, CheckResponseDTO, SignUpResponseDTO, ForgotPasswordResponseDTO, ResetPasswordResponseDTO
 from commands.auth_commands import LoginCommand, SignUpCommand, ForgotPasswordCommand, ResetPasswordCommand
@@ -59,8 +59,9 @@ class AuthService:
             "username": user["username"],
             "email": user["email"]
         }
-        access_token = generate_access_token(payload)
-        refresh_token = generate_refresh_token(payload)
+        jwt_utils = JwtUtils()
+        access_token = jwt_utils.generate_access_token(payload)
+        refresh_token = jwt_utils.generate_refresh_token(payload)
         user_dto = UserDTO(username=user["username"], email=user["email"])
         return LoginResponseDTO(token=access_token, refresh_token=refresh_token, user=user_dto)
 
@@ -74,10 +75,11 @@ class AuthService:
         refresh_token = query.refresh_token
         if not refresh_token:
             return ErrorResponseDTO(error="Nessun token di refresh")
-        decoded = verify_refresh_token(refresh_token)
+        jwt_utils = JwtUtils()
+        decoded = jwt_utils.verify_refresh_token(refresh_token)
         if not decoded:
             return ErrorResponseDTO(error="Token di refresh non valido o scaduto")
-        new_access_token = generate_access_token({
+        new_access_token = jwt_utils.generate_access_token({
             "id": decoded["id"],
             "username": decoded["username"],
             "email": decoded["email"]
@@ -91,9 +93,10 @@ class AuthService:
             dict: Stato e dati utente.
             DTO: CheckResponseDTO, ErrorResponseDTO
         """
-        user = get_user_from_request()
-        if isinstance(user, tuple):  # Se è una response di errore
-            return ErrorResponseDTO(error="Utente non trovato")
+        auth_utils = AuthUtils(self.request)
+        user = auth_utils.get_user_from_request()
+        if user is None:
+            return jsonify({"error": "Utente non trovato"}), 401
         db_user = get_user_by_username_or_email(user["username"])
         if not db_user:
             return ErrorResponseDTO(error="Utente non trovato")
@@ -136,7 +139,8 @@ class AuthService:
         reset_token = jwt.encode(payload, CURRENT_CONFIG.SECRET_KEY, algorithm="HS256")
         reset_link = f"{CURRENT_CONFIG.FRONTEND_BASE_URL}/reset-password?token={reset_token}"
         update_user_reset_token(user["id"], reset_token)
-        send_reset_email(cmd.email, reset_link)
+        email_utils = EmailUtils()
+        email_utils.send_reset_email(cmd.email, reset_link)
         return ForgotPasswordResponseDTO(status="ok")
 
     def reset_password_service(self, cmd: ResetPasswordCommand):
@@ -148,8 +152,9 @@ class AuthService:
         """
         if not cmd.token or not cmd.new_password:
             return ErrorResponseDTO(error="Token o nuova password mancanti")
+        jwt_utils = JwtUtils()
         try:
-            decoded = jwt.decode(cmd.token, CURRENT_CONFIG.SECRET_KEY, algorithms=["HS256"])
+            decoded = jwt_utils.decode_token(cmd.token)
             user_id = decoded["id"]
         except jwt.ExpiredSignatureError:
             return ErrorResponseDTO(error="Token scaduto")

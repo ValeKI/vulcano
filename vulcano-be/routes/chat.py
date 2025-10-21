@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from services.chat_service import ChatService
-from utils.auth_utils import get_user_id_from_request
+from utils.auth_utils import AuthUtils
 from utils.jwt_utils import require_auth
 from dtos.common_dtos import ErrorResponseDTO
 
