@@ -1,6 +1,9 @@
 from flask import Blueprint, request, jsonify, make_response
 from utils.jwt_utils import require_auth
 from services.auth_service import AuthService
+from dtos.common_dtos import ErrorResponseDTO
+from commands.auth_commands import LoginCommand, SignUpCommand, ForgotPasswordCommand, ResetPasswordCommand
+from queries.auth_queries import RefreshQuery, CheckQuery
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -51,24 +54,22 @@ def login():
         401:
           description: Credenziali non valide.
     """
+    cmd = LoginCommand(**request.get_json())
     service = AuthService(request)
-    result = service.login_service()
-    status = get_status_code(result)
-    if "refresh_token" in result:
-        response = make_response(jsonify({
-            "token": result["token"],
-            "user": result["user"]
-        }), status)
+    response_dto = service.login_service(cmd)
+    status = get_status_code(response_dto)
+    if hasattr(response_dto, "refresh_token"):
+        response = make_response(jsonify(response_dto.model_dump()), status)
         response.set_cookie(
             "refresh_token",
-            result["refresh_token"],
+            response_dto.refresh_token,
             httponly=True,
             secure=True,
             samesite="Strict",
             max_age=60 * 60 * 24 * 7
         )
         return response
-    return jsonify(result), status
+    return jsonify(response_dto.model_dump()), status
 
 @auth_bp.route("/refresh", methods=["POST"])
 @require_auth
@@ -84,10 +85,11 @@ def refresh():
         401:
           description: Token di refresh non valido o mancante.
     """
+    query = RefreshQuery(refresh_token=request.cookies.get("refresh_token"))
     service = AuthService(request)
-    result = service.refresh_service()
-    status = get_status_code(result)
-    return jsonify(result), status
+    response_dto = service.refresh_service(query)
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
 
 @auth_bp.route("/check", methods=["POST"])
 @require_auth
@@ -103,10 +105,11 @@ def check():
         404:
           description: Utente non trovato.
     """
+    query = CheckQuery()
     service = AuthService(request)
-    result = service.check_service()
-    status = get_status_code(result)
-    return jsonify(result), status
+    response_dto = service.check_service(query)
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
 
 @auth_bp.route("/signUp", methods=["POST"])
 def signUp():
@@ -136,10 +139,11 @@ def signUp():
         409:
           description: Utente già esistente.
     """
+    cmd = SignUpCommand(**request.get_json())
     service = AuthService(request)
-    result = service.signup_service()
-    status = get_status_code(result)
-    return jsonify(result), status
+    response_dto = service.signup_service(cmd)
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
 
 @auth_bp.route("/forgot-password", methods=["POST"])
 def forgot_password():
@@ -163,10 +167,11 @@ def forgot_password():
         400:
           description: Email mancante.
     """
+    cmd = ForgotPasswordCommand(**request.get_json())
     service = AuthService(request)
-    result = service.forgot_password_service()
-    status = get_status_code(result)
-    return jsonify(result), status
+    response_dto = service.forgot_password_service(cmd)
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
 
 @auth_bp.route("/reset-password", methods=["POST"])
 def reset_password():
@@ -192,7 +197,8 @@ def reset_password():
         400:
           description: Token o nuova password mancanti, token scaduto o non valido.
     """
+    cmd = ResetPasswordCommand(**request.get_json())
     service = AuthService(request)
-    result = service.reset_password_service()
-    status = get_status_code(result)
-    return jsonify(result), status
+    response_dto = service.reset_password_service(cmd)
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status

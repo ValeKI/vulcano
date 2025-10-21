@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from services.chat_service import ChatService
 from utils.auth_utils import get_user_id_from_request
 from utils.jwt_utils import require_auth
+from dtos.common_dtos import ErrorResponseDTO
 
 chat_bp = Blueprint('chat', __name__)
 
@@ -54,9 +55,9 @@ def api_get_question_by_id(question_id):
               type: string
     """
     service = ChatService(request)
-    result = service.get_question_by_id(question_id)
-    status = get_status_code(result)
-    return jsonify(result), status
+    response_dto = service.get_question_by_id(question_id)
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
 
 @chat_bp.route('/questions/user', methods=['GET'])
 @require_auth
@@ -87,9 +88,9 @@ def api_list_questions_by_user_id():
                     type: string
     """
     service = ChatService(request)
-    result = service.list_questions_by_user_id()
-    status = get_status_code(result)
-    return jsonify(result), status
+    response_dto = service.list_questions_by_user_id()
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
 
 @chat_bp.route('/questions', methods=['POST'])
 @require_auth
@@ -131,9 +132,9 @@ def api_insert_question():
               type: string
     """
     service = ChatService(request)
-    result = service.insert_question()
-    status = get_status_code(result)
-    return jsonify(result), status
+    response_dto = service.insert_question()
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
 
 @chat_bp.route('/answers/<int:question_id>', methods=['GET'])
 @require_auth
@@ -172,6 +173,6 @@ def api_get_answer_by_question_id(question_id):
               type: string
     """
     service = ChatService(request)
-    result = service.get_answer_by_question_id(question_id)
-    status = get_status_code(result)
-    return jsonify(result), status
+    response_dto = service.get_answer_by_question_id(question_id)
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
