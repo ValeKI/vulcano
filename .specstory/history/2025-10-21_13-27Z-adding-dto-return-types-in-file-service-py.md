@@ -2464,3 +2464,551 @@ Se hai bisogno di altre ottimizzazioni o vuoi evitare sorprese simili, puoi semp
 
 ---
 
+_**User (2025-10-21 14:21Z)**_
+
+di db_anwser_utils db_file_utils db_question_utils db_user_utils
+
+Sposta tutte le funzioni come metodi della classe.
+Se necessario, aggiungi un costruttore per gestire la connessione Redis.
+Aggiorna le chiamate ai metodi in altri file per usare l'istanza della classe.
+modifica i service che li utilizzano, adattandoli alle nuove classi
+
+MODIFICA SERVICE E ALTRE UTILS DOVE SONO UTILIZZATI. DEVI FARLO.
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+
+
+---
+
+_**User (2025-10-21 14:23Z)**_
+
+di db_anwser_utils db_file_utils db_question_utils db_user_utils
+
+Sposta tutte le funzioni come metodi della classe.
+Se necessario, aggiungi un costruttore per gestire la connessione Redis.
+Aggiorna le chiamate ai metodi in altri file per usare l'istanza della classe.
+modifica i service che li utilizzano, adattandoli alle nuove classi
+
+MODIFICA SERVICE E ALTRE UTILS DOVE SONO UTILIZZATI. DEVI FARLO.
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [db_user_utils.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/utils/db/db_user_utils.py)
+
+Trasforma tutte le funzioni in metodi della classe `DbUserUtils`.
+
+````python
+from db import get_cursor
+
+class DbUserUtils:
+    def get_user_by_username_or_email(self, username_or_email):
+        cur = get_cursor()
+        cur.execute(
+            "SELECT * FROM users WHERE username=%s OR email=%s",
+            (username_or_email, username_or_email)
+        )
+        return cur.fetchone()
+
+    def get_user_by_email(self, email):
+        cur = get_cursor()
+        cur.execute("SELECT * FROM users WHERE email=%s", (email,))
+        return cur.fetchone()
+
+    def get_existing_user(self, email, username):
+        cur = get_cursor()
+        cur.execute("SELECT * FROM users WHERE email=%s OR username=%s", (email, username))
+        return cur.fetchone()
+
+    def insert_user(self, username, email, hashed_pw):
+        cur = get_cursor()
+        cur.execute(
+            "INSERT INTO users (username, email, password) VALUES (%s, %s, %s)",
+            (username, email, hashed_pw)
+        )
+        cur.connection.commit()
+
+    def update_user_password_and_reset_token(self, user_id, hashed_pw, token):
+        cur = get_cursor()
+        result = cur.execute(
+            "UPDATE users SET password=%s, reset_token=NULL WHERE id=%s AND reset_token=%s",
+            (hashed_pw, user_id, token)
+        )
+        cur.connection.commit()
+        return cur.rowcount
+
+    def update_user_reset_token(self, user_id, reset_token):
+        cur = get_cursor()
+        cur.execute("UPDATE users SET reset_token=%s WHERE id=%s", (reset_token, user_id))
+        cur.connection.commit()
+
+    def get_user_reset_token(self, user_id):
+        cur = get_cursor()
+        cur.execute("SELECT reset_token FROM users WHERE id=%s", (user_id,))
+        return cur.fetchone()
+````
+
+---
+
+### [db_question_utils.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/utils/db/db_question_utils.py)
+
+Trasforma tutte le funzioni in metodi della classe `DbQuestionUtils`.
+
+````python
+from db import get_cursor
+from typing import Optional, List, Dict
+
+class DbQuestionUtils:
+    def get_question_by_id(self, question_id: int) -> Optional[Dict]:
+        cur = get_cursor()
+        cur.execute(
+            "SELECT id, content, user_id, content_file_id, created_at FROM questions WHERE id=%s",
+            (question_id,)
+        )
+        row = cur.fetchone()
+        if row:
+            return {
+                "id": row[0],
+                "content": row[1],
+                "user_id": row[2],
+                "content_file_id": row[3],
+                "created_at": row[4]
+            }
+        return None
+
+    def list_questions_by_user_id(self, user_id: int) -> List[Dict]:
+        cur = get_cursor()
+        cur.execute(
+            "SELECT id, content, user_id, content_file_id, created_at FROM questions WHERE user_id=%s ORDER BY created_at DESC",
+            (user_id,)
+        )
+        rows = cur.fetchall()
+        return [
+            {
+                "id": row['id'],
+                "content": row['content'],
+                "user_id": row['user_id'],
+                "content_file_id": row['content_file_id'],
+                "created_at": row['created_at']
+            }
+            for row in rows
+        ]
+
+    def insert_question(self, user_id: int, content: str) -> int:
+        cur = get_cursor()
+        cur.execute(
+            "INSERT INTO questions (user_id, content) VALUES (%s, %s) RETURNING id",
+            (user_id, content)
+        )
+        question_id = cur.fetchone()['id']
+        cur.connection.commit()
+        return question_id
+````
+
+---
+
+### [db_file_utils.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/utils/db/db_file_utils.py)
+
+Trasforma tutte le funzioni in metodi della classe `DbFileUtils`.
+
+````python
+from db import get_cursor
+
+class DbFileUtils:
+    def db_insert_file(self, file_name, format, user_id):
+        cur = get_cursor()
+        cur.execute(
+            "INSERT INTO files (file_name, format, user_id) VALUES (%s, %s, %s) RETURNING file_id",
+            (file_name, format, user_id)
+        )
+        if hasattr(cur, "connection"):
+            cur.connection.commit()
+        result = cur.fetchone()
+        print(f"Inserted file with ID: {result} (type: {type(result)})")
+        if not result:
+            return None
+        if isinstance(result, dict):
+            return result.get('file_id')
+        return result[0]
+
+    def file_exists_for_user(self, filename, user_id):
+        cur = get_cursor()
+        cur.execute(
+            "SELECT 1 FROM files WHERE file_name=%s AND user_id=%s",
+            (filename, user_id)
+        )
+        return cur.fetchone() is not None
+
+    def count_files_with_base_name(self, base_name, ext, user_id):
+        cur = get_cursor()
+        like_pattern = f"{base_name}%{ext}"
+        cur.execute(
+            "SELECT COUNT(*) AS count FROM files WHERE file_name LIKE %s AND user_id=%s",
+            (like_pattern, user_id)
+        )
+        result = cur.fetchone()
+        if not result:
+            return 0
+        if isinstance(result, dict):
+            return result.get('count', 0)
+        return result[0]
+
+    def list_files_for_user(self, user_id):
+        cur = get_cursor()
+        cur.execute(
+            "SELECT file_id, file_name, format FROM files WHERE user_id=%s",
+            (user_id,)
+        )
+        return cur.fetchall()
+
+    def get_file_by_id(self, file_id):
+        cur = get_cursor()
+        cur.execute(
+            "SELECT file_id, file_name, user_id, format FROM files WHERE file_id=%s",
+            (file_id,)
+        )
+        result = cur.fetchone()
+        return result
+````
+
+---
+
+### [db_answer_utils.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/utils/db/db_answer_utils.py)
+
+Trasforma tutte le funzioni in metodi della classe `DbAnswerUtils`.
+
+````python
+````python
+from db import get_cursor
+from typing import Optional, Dict
+
+class DbAnswerUtils:
+    def insert_answer(self, question_id: int, content: str) -> int:
+        cur = get_cursor()
+        cur.execute(
+            "INSERT INTO answers (question_id, content) VALUES (%s, %s) RETURNING id",
+            (question_id, content)
+        )
+        answer_id = cur.fetchone()['id']
+        cur.connection.commit()
+        return answer_id
+
+    def get_answer_by_question_id(self, question_id: int) -> Optional[Dict]:
+        cur = get_cursor()
+        cur.execute(
+            "SELECT id, question_id, content, content_file_id, created_at FROM answers WHERE question_id=%s",
+            (question_id,)
+        )
+        row = cur.fetchone()
+        if row:
+            return {
+                "id": row['id'],
+                "question_id": row['question_id'],
+                "content": row['content'],
+                "content_file_id": row['content_file_id'],
+                "created_at": row['created_at']
+            }
+        return None
+````
+
+---
+
+### [auth_service.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/services/auth_service.py)
+
+Aggiorna l'utilizzo dei metodi DB per usare le istanze delle nuove classi.
+
+````python
+````python
+````python
+````python
+````python
+from utils.db.db_user_utils import DbUserUtils
+# ...existing code...
+
+class AuthService:
+    # ...existing code...
+
+    def login_service(self, cmd: LoginCommand):
+        db_user_utils = DbUserUtils()
+        user = db_user_utils.get_user_by_username_or_email(cmd.usernameOrEmail)
+        # ...existing code...
+
+    def refresh_service(self, query: RefreshQuery):
+        # ...existing code...
+
+    def check_service(self, query: CheckQuery):
+        auth_utils = AuthUtils(self.request)
+        db_user_utils = DbUserUtils()
+        user = auth_utils.get_user_from_request()
+        if user is None:
+            return jsonify({"error": "Utente non trovato"}), 401
+        db_user = db_user_utils.get_user_by_username_or_email(user["username"])
+        if not db_user:
+            return ErrorResponseDTO(error="Utente non trovato")
+        return CheckResponseDTO(status="ok", user=user)
+
+    def signup_service(self, cmd: SignUpCommand):
+        db_user_utils = DbUserUtils()
+        if not cmd.email or not cmd.password or not cmd.username:
+            return ErrorResponseDTO(error="Dati mancanti")
+        existing_user = db_user_utils.get_existing_user(cmd.email, cmd.username)
+        if existing_user:
+            return ErrorResponseDTO(error="Utente già esistente")
+        salt = bcrypt.gensalt()
+        hashed_pw = bcrypt.hashpw(cmd.password.encode(), salt).decode('utf-8')
+        db_user_utils.insert_user(cmd.username, cmd.email, hashed_pw)
+        return SignUpResponseDTO(status="ok", user={"username": cmd.username, "email": cmd.email})
+
+    def forgot_password_service(self, cmd: ForgotPasswordCommand):
+        db_user_utils = DbUserUtils()
+        if not cmd.email:
+            return ErrorResponseDTO(error="Email mancante")
+        user = db_user_utils.get_user_by_email(cmd.email)
+        if not user:
+            return ForgotPasswordResponseDTO(status="ok")
+        # ...existing code...
+        db_user_utils.update_user_reset_token(user["id"], reset_token)
+        # ...existing code...
+
+    def reset_password_service(self, cmd: ResetPasswordCommand):
+        db_user_utils = DbUserUtils()
+        # ...existing code...
+        rowcount = db_user_utils.update_user_password_and_reset_token(user_id, hashed_pw, cmd.token)
+        # ...existing code...
+````
+
+---
+
+### [chat_service.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/services/chat_service.py)
+
+Aggiorna l'utilizzo dei metodi DB per usare le istanze delle nuove classi.
+
+````python
+from utils.db.db_question_utils import DbQuestionUtils
+from utils.db.db_answer_utils import DbAnswerUtils
+from utils.db.db_file_utils import DbFileUtils
+# ...existing code...
+
+class ChatService:
+    # ...existing code...
+
+    def get_question_by_id(self, question_id: int):
+        db_question_utils = DbQuestionUtils()
+        question = db_question_utils.get_question_by_id(question_id)
+        if question:
+            return QuestionResponseDTO(**question)
+        return ErrorResponseDTO(error="Question not found")
+
+    def list_questions_by_user_id(self):
+        auth_utils = AuthUtils(self.request)
+        db_question_utils = DbQuestionUtils()
+        user_id = auth_utils.get_user_id_from_request()
+        if user_id is None:
+            return jsonify({"error": "Utente non autorizzato"}), 401
+        questions = db_question_utils.list_questions_by_user_id(user_id)
+        return ListQuestionsResponseDTO(questions=questions)
+
+    def insert_question(self):
+        data = self.request.json
+        content = data.get('content')
+        auth_utils = AuthUtils(self.request)
+        db_question_utils = DbQuestionUtils()
+        db_answer_utils = DbAnswerUtils()
+        db_file_utils = DbFileUtils()
+        user_id = auth_utils.get_user_id_from_request()
+        if user_id is None:
+            return jsonify({"error": "Utente non autorizzato"}), 401
+
+        files_ids = db_file_utils.list_files_for_user(user_id)
+        if not files_ids:
+            return ErrorResponseDTO(error="Nessun file disponibile per l'utente")
+
+        redis_utils = RedisUtils()
+        ai_utils = AIUtils()
+        qdrant_utils = QdrantUtils()
+        ai_answer = redis_utils.read_from_redis_cache(user_id, content)
+        if not ai_answer:
+            ai_answer = ai_utils.call_ai_to_generate_answer(content, user_id)
+            question_id = db_question_utils.insert_question(user_id, content)
+            answer_id = db_answer_utils.insert_answer(question_id, ai_answer["answer"])
+            for file_id in ai_answer["file_ids"]:
+                qdrant_utils.add_answer_id_to_file_chunks(file_id, answer_id)
+            redis_utils.write_to_redis_cache(user_id, content, ai_answer, ai_answer["file_ids"], question_id, answer_id)
+        else:
+            question_id = ai_answer.get("question_id")
+            answer_id = ai_answer.get("answer_id")
+
+        return InsertQuestionResponseDTO(
+            id=question_id,
+            question=content,
+            answer=ai_answer,
+            file_ids=ai_answer["file_ids"]
+        )
+
+    def get_answer_by_question_id(self, question_id: int):
+        db_answer_utils = DbAnswerUtils()
+        answer = db_answer_utils.get_answer_by_question_id(question_id)
+        if answer:
+            return AnswerResponseDTO(**answer)
+        return ErrorResponseDTO(error="Answer not found")
+````
+
+---
+
+### [file_service.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/services/file_service.py)
+
+Aggiorna l'utilizzo dei metodi DB per usare le istanze delle nuove classi.
+
+````python
+from utils.db.db_file_utils import DbFileUtils
+# ...existing code...
+
+class FileService:
+    # ...existing code...
+
+    def upload_file(self):
+        # ...existing code...
+        file_utils = FileUtils()
+        db_file_utils = DbFileUtils()
+        new_file_name = file_utils.get_unique_file_name(file.filename, user_id)
+        file_content = file.read()
+        if not file_content:
+            return ErrorResponseDTO(error="File vuoto")
+        minio_utils = MinioUtils()
+        minio_utils.upload_user_file(user_id, new_file_name, file_content)
+        file_id = file_utils.insert_new_file(new_file_name, user_id)
+        # oppure direttamente: file_id = db_file_utils.db_insert_file(new_file_name, format, user_id)
+        qdrant_utils = QdrantUtils()
+        num_chunks = qdrant_utils.upload_file_chunks_to_qdrant(user_id, file_id, new_file_name, file_content)
+        if num_chunks == 0:
+            return ErrorResponseDTO(error="File vuoto o non processabile")
+        return UploadFileResponseDTO(status="ok", filename=new_file_name)
+
+    def download_file(self):
+        # ...existing code...
+        db_file_utils = DbFileUtils()
+        file_name = db_file_utils.get_file_by_id(file_id)["file_name"]
+        minio_utils = MinioUtils()
+        file_data = minio_utils.get_user_file(user_id, file_name)
+        # ...existing code...
+
+    def list_files(self):
+        # ...existing code...
+        db_file_utils = DbFileUtils()
+        file_ids = qdrant_utils.get_file_ids_by_user_id(user_id)
+        files = []
+        for file_id in file_ids:
+            file_data = db_file_utils.get_file_by_id(file_id)
+            if file_data:
+                files.append(file_data)
+        return ListFilesResponseDTO(files=files)
+
+    def list_files_by_answer_id(self):
+        # ...existing code...
+        db_file_utils = DbFileUtils()
+        file_ids = qdrant_utils.get_file_ids_by_answer_id(answer_id)
+        files = []
+        for file_id in file_ids:
+            file_data = db_file_utils.get_file_by_id(file_id)
+            if file_data:
+                files.append(file_data)
+        return ListFilesByAnswerIdResponseDTO(files=files)
+````
+
+---
+
+### [file_utils.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/utils/file_utils.py)
+
+Aggiorna l'utilizzo dei metodi DB per usare l'istanza della nuova classe.
+
+````python
+from utils.db.db_file_utils import DbFileUtils
+
+class FileUtils:
+    def get_unique_file_name(self, file_name, user_id):
+        db_file_utils = DbFileUtils()
+        name, ext = os.path.splitext(file_name)
+        if db_file_utils.file_exists_for_user(file_name, user_id):
+            count = db_file_utils.count_files_with_base_name(name, ext, user_id)
+            return f"{name}_{count}{ext}"
+        return file_name
+
+    def insert_new_file(self, file_name, user_id):
+        db_file_utils = DbFileUtils()
+        format = os.path.splitext(file_name)[1].lstrip('.')
+        file_id = db_file_utils.db_insert_file(file_name, format, user_id)
+        return file_id
+````
+
+---
+
+_**User (2025-10-21 14:24Z)**_
+
+vedo che non hai aggiornato 
+from utils.db.db_user_utils import get_user_by_username_or_email in jwt_utils
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [jwt_utils.py](file:///c%3A/Users/demig/Documents/vulcano/vulcano-be/utils/jwt_utils.py)
+
+Aggiorna l'import e l'utilizzo di `get_user_by_username_or_email` per usare l'istanza della classe `DbUserUtils`.
+
+````python
+import jwt
+from datetime import datetime, timedelta, timezone
+from config import CURRENT_CONFIG
+from functools import wraps
+from flask import request, jsonify
+from utils.db.db_user_utils import DbUserUtils
+
+class JwtUtils:
+    SECRET_KEY = CURRENT_CONFIG.SECRET_KEY
+    REFRESH_SECRET_KEY = CURRENT_CONFIG.REFRESH_SECRET_KEY
+
+    def generate_access_token(self, payload: dict, expires_in: int = 86400):
+        # ...existing code...
+
+    def generate_refresh_token(self, payload: dict, expires_in: int = 60 * 60 * 24 * 7):
+        # ...existing code...
+
+    def verify_token(self, token: str):
+        # ...existing code...
+
+    def verify_refresh_token(self, token: str):
+        # ...existing code...
+
+    def decode_token(self, token: str):
+        # ...existing code...
+
+# Funzione esterna per la verifica del token e dell'utente
+def require_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return jsonify({"error": "Token mancante"}), 401
+        token = auth_header.split(" ")[1]
+        jwt_utils = JwtUtils()
+        decoded = jwt_utils.verify_token(token)
+        if not decoded:
+            return jsonify({"error": "Token non valido"}), 401
+        username = decoded.get("username")
+        if not username:
+            return jsonify({"error": "Token non valido"}), 401
+        db_user_utils = DbUserUtils()
+        user = db_user_utils.get_user_by_username_or_email(username)
+        if not user:
+            return jsonify({"error": "Utente non trovato"}), 401
+        # Non passare user come argomento, solo chiamata della funzione
+        return f(*args, **kwargs)
+    return decorated
+````
+
+---
+
