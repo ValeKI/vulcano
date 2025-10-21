@@ -39,7 +39,6 @@ class FileService:
         if user_id is None:
             return jsonify({"error": "Utente non autorizzato"}), 401
         file_utils = FileUtils()
-        db_file_utils = DbFileUtils()
         new_file_name = file_utils.get_unique_file_name(file.filename, user_id)
         file_content = file.read()
         if not file_content:
@@ -47,7 +46,6 @@ class FileService:
         minio_utils = MinioUtils()
         minio_utils.upload_user_file(user_id, new_file_name, file_content)
         file_id = file_utils.insert_new_file(new_file_name, user_id)
-        # oppure direttamente: file_id = db_file_utils.db_insert_file(new_file_name, format, user_id)
         qdrant_utils = QdrantUtils()
         num_chunks = qdrant_utils.upload_file_chunks_to_qdrant(user_id, file_id, new_file_name, file_content)
         if num_chunks == 0:

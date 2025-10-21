@@ -54,8 +54,11 @@ class DbFileUtils:
             "SELECT file_id, file_name, format FROM files WHERE user_id=%s",
             (user_id,)
         )
-        print(f"[DB] Files fetched: {cur.fetchall()}")
-        return cur.fetchall()
+        rows = cur.fetchall()
+        print(f"[DB] Files fetched: {rows}")
+        file_ids = [row['file_id'] if isinstance(row, dict) else row[0] for row in rows]
+        print(f"[DB] Extracted file_ids: {file_ids}")
+        return file_ids
 
     def get_file_by_id(self, file_id):
         print(f"[DB] get_file_by_id: file_id={file_id}")
