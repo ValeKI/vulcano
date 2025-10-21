@@ -26,7 +26,7 @@ const DocumentItem: React.FC<DocumentItemProps> = ({
 
   React.useEffect(() => {
     if (type === "question" && selected && itemRef.current) {
-      itemRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      itemRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }, [selected, type]);
 
