@@ -141,8 +141,15 @@ const Chat: React.FC = () => {
       </div>
 
       {viewPdfFile && (
-        <div className="pdf-viewer-overlay">
-          <div className="pdf-viewer-modal">
+        <div
+          className="pdf-viewer-overlay"
+          onClick={closePdfViewer}
+          style={{ cursor: 'pointer' }}
+        >
+          <div
+            className="pdf-viewer-modal"
+            onClick={e => e.stopPropagation()}
+          >
             <PdfViewer file={viewPdfFile as Blob} onClose={closePdfViewer}/>
           </div>
         </div>

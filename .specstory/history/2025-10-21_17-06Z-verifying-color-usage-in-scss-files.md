@@ -248,3 +248,945 @@ Sostituisci `@import` con `@use`:
 
 ---
 
+_**User (2025-10-21 17:30Z)**_
+
+è complicato aggiunggere qualcosa che indica un loading su certe api, nemmeno tutte
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+Ecco una soluzione semplice e modulare:
+
+**Step-by-step:**
+1. Non modifichiamo direttamente le API, ma aggiungiamo una funzione wrapper che gestisce lo stato di loading.
+2. Il wrapper può essere usato solo dove serve, senza cambiare tutte le chiamate.
+3. Si può passare una callback (es: `setLoading`) che imposta lo stato di loading prima/dopo la chiamata.
+
+### [AuthApi.tsx](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/api/AuthApi.tsx)
+
+Aggiungi una funzione helper `withLoading` che accetta una funzione API e una callback di loading. Usa questa funzione solo dove serve.
+
+````tsx
+// ...existing code...
+
+/**
+ * Wrapper per gestire loading su chiamate API.
+ * Esempio uso:
+ *   withLoading(() => authApi.login(data), setLoading)
+ */
+export async function withLoading<T>(apiCall: () => Promise<T>, setLoading?: (v: boolean) => void): Promise<T> {
+  if (setLoading) setLoading(true);
+  try {
+    const result = await apiCall();
+    return result;
+  } finally {
+    if (setLoading) setLoading(false);
+  }
+}
+
+// ...existing code...
+````
+
+**Come usarlo:**
+Nel componente React:
+```tsx
+// ...existing code...
+const [loading, setLoading] = useState(false);
+// Per login con loading:
+await withLoading(() => authApi.login(data), setLoading);
+// ...existing code...
+```
+
+**Vantaggi:**  
+- Non serve cambiare tutte le API.
+- Puoi scegliere dove mostrare il loading.
+- Puoi estendere facilmente per altre API.
+
+---
+
+_**User (2025-10-21 17:32Z)**_
+
+ma come mai a volte i pdf mi mostrano scritte invece che il semplice file?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+Quando visualizzi un PDF con `react-pdf`, il componente `Page` renderizza il contenuto del PDF come testo e immagini, non come un semplice "preview" tipo immagine.  
+Se il PDF contiene testo selezionabile, verrà mostrato come tale; se contiene solo immagini (es. scansioni), vedrai solo le immagini.
+
+**Motivi possibili:**
+- Il PDF contiene testo digitale (non è una scansione).
+- `react-pdf` cerca di renderizzare il contenuto in modo accessibile (testo, link, ecc.).
+- Alcuni PDF possono avere font o layout particolari che vengono visualizzati come testo.
+
+**Soluzioni possibili:**
+- Se vuoi solo una preview tipo immagine, puoi convertire la pagina PDF in immagine (es. con una libreria server-side) e mostrare l’immagine.
+- Oppure puoi personalizzare il rendering del componente `Page` usando le props `renderTextLayer={false}` e `renderAnnotationLayer={false}` per nascondere testo e annotazioni.
+
+Esempio di modifica:
+
+````tsx
+// ...existing code...
+<Page key={idx + 1} pageNumber={idx + 1} renderTextLayer={false} renderAnnotationLayer={false} />
+// ...existing code...
+````
+
+Questo mostrerà solo il "canvas" della pagina, senza sovrapporre il testo selezionabile.
+
+---
+
+_**User (2025-10-21 17:33Z)**_
+
+ok poi un'altra cosa, fra una pagina e l'altra non ci sono completamente spazi
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [PdfViewer.tsx](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/components/PdfViewer.tsx)
+
+Aggiungi uno stile inline per lo spazio tra le pagine PDF (ad esempio `marginBottom: '2rem'`).
+
+````tsx
+// ...existing code...
+<Document file={file} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
+  {Array.from({ length: numPages }, (_, idx) => (
+    <Page
+      key={idx + 1}
+      pageNumber={idx + 1}
+      renderTextLayer={false}
+      renderAnnotationLayer={false}
+      style={{ marginBottom: '2rem' }} // aggiungi spazio tra le pagine
+    />
+  ))}
+</Document>
+// ...existing code...
+````
+
+**Nota:** Se vuoi uno spazio diverso, modifica il valore di `marginBottom`.
+
+---
+
+_**User (2025-10-21 17:33Z)**_
+
+mi dice che page non accetta style
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [PdfViewer.tsx](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/components/PdfViewer.tsx)
+
+Il componente `Page` di `react-pdf` non accetta la prop `style`.  
+Per aggiungere spazio tra le pagine, avvolgi ogni `Page` in un `<div>` con lo stile desiderato.
+
+````tsx
+// ...existing code...
+{Array.from({ length: numPages }, (_, idx) => (
+  <div key={idx + 1} style={{ marginBottom: '2rem' }}>
+    <Page
+      pageNumber={idx + 1}
+      renderTextLayer={false}
+      renderAnnotationLayer={false}
+    />
+  </div>
+))}
+// ...existing code...
+````
+
+---
+
+_**User (2025-10-21 17:34Z)**_
+
+si può lasciare fisso il click del Chiudi? se ne va con lo scroll del file
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [PdfViewer.tsx](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/components/PdfViewer.tsx)
+
+Rendi il bottone "Chiudi" fisso in alto a destra sovrapposto al PDF, usando uno stile `position: absolute` su un contenitore relativo.
+
+````tsx
+// ...existing code...
+return (
+  <div className="pdf-viewer-modal" style={{ position: 'relative' }}>
+    <button
+      onClick={onClose}
+      style={{
+        position: 'absolute',
+        top: '1rem',
+        right: '1rem',
+        zIndex: 10,
+        minWidth: '80px'
+      }}
+    >
+      Chiudi
+    </button>
+    <Document file={file} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
+      {Array.from({ length: numPages }, (_, idx) => (
+        <div key={idx + 1} style={{ marginBottom: '1.7rem' }}>
+          <Page
+            pageNumber={idx + 1}
+            renderTextLayer={false}
+            renderAnnotationLayer={false}
+          />
+        </div>
+      ))}
+    </Document>
+  </div>
+);
+// ...existing code...
+````
+
+---
+
+_**User (2025-10-21 17:35Z)**_
+
+ok ma ora è sopra il file
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [PdfViewer.tsx](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/components/PdfViewer.tsx)
+
+Per avere il bottone "Chiudi" sempre visibile ma non sovrapposto al PDF, puoi:
+- Spostare il bottone fuori dal contenitore scrollabile del PDF.
+- Usa un layout flex con il bottone in alto e il PDF sotto.
+
+Ecco come puoi fare:
+
+````tsx
+// ...existing code...
+return (
+  <div className="pdf-viewer-modal" style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
+    <div style={{ position: 'sticky', top: 0, alignSelf: 'flex-end', zIndex: 10 }}>
+      <button
+        onClick={onClose}
+        style={{
+          minWidth: '80px',
+          margin: '1rem'
+        }}
+      >
+        Chiudi
+      </button>
+    </div>
+    <div style={{ flex: 1, overflow: 'auto' }}>
+      <Document file={file} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
+        {Array.from({ length: numPages }, (_, idx) => (
+          <div key={idx + 1} style={{ marginBottom: '1.7rem' }}>
+            <Page
+              pageNumber={idx + 1}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+            />
+          </div>
+        ))}
+      </Document>
+    </div>
+  </div>
+);
+// ...existing code...
+````
+
+Così il bottone resta sempre visibile in alto a destra, ma non si sovrappone alle pagine PDF.
+
+---
+
+_**User (2025-10-21 17:35Z)**_
+
+ok ora una cosa, se l'utente preme fuori dalla modale, vorrei che si chiudesse
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [Chat.tsx](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/pages/Chat.tsx)
+
+Rendi cliccabile l'overlay: se l'utente clicca fuori dalla modale (sull'overlay), chiudi il PDF.  
+Evita che il click sulla modale stessa chiuda il PDF usando `stopPropagation`.
+
+````tsx
+// ...existing code...
+{viewPdfFile && (
+  <div
+    className="pdf-viewer-overlay"
+    onClick={closePdfViewer}
+    style={{ cursor: 'pointer' }}
+  >
+    <div
+      className="pdf-viewer-modal"
+      onClick={e => e.stopPropagation()}
+    >
+      <PdfViewer file={viewPdfFile as Blob} onClose={closePdfViewer}/>
+    </div>
+  </div>
+)}
+// ...existing code...
+````
+
+Così il PDF si chiude se clicchi fuori dalla modale, ma non se clicchi dentro.
+
+---
+
+_**User (2025-10-21 17:36Z)**_
+
+ok ora, posso fare molto più grande questo PdfViewer ?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [PdfViewer.tsx](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/components/PdfViewer.tsx)
+
+Per rendere il PdfViewer molto più grande, aumenta le dimensioni massime e minime della modale e del contenitore PDF.  
+Puoi anche rendere la modale quasi a schermo intero.
+
+````tsx
+// ...existing code...
+return (
+  <div
+    className="pdf-viewer-modal"
+    style={{
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'relative',
+      width: '96vw',
+      height: '96vh',
+      maxWidth: '1800px',
+      maxHeight: '98vh',
+      minWidth: '900px',
+      minHeight: '600px',
+      boxSizing: 'border-box',
+      overflow: 'hidden'
+    }}
+  >
+    <div style={{ position: 'sticky', top: 0, alignSelf: 'flex-end', zIndex: 10 }}>
+      <button
+        onClick={onClose}
+        style={{
+          minWidth: '80px',
+          margin: '1rem'
+        }}
+      >
+        Chiudi
+      </button>
+    </div>
+    <div style={{ flex: 1, overflow: 'auto', width: '100%', height: '100%' }}>
+      <Document file={file} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
+        {Array.from({ length: numPages }, (_, idx) => (
+          <div key={idx + 1} style={{ marginBottom: '1.7rem' }}>
+            <Page
+              pageNumber={idx + 1}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+              width={1600} // aumenta la larghezza della pagina PDF
+            />
+          </div>
+        ))}
+      </Document>
+    </div>
+  </div>
+);
+// ...existing code...
+````
+
+Puoi regolare i valori di `width`, `height`, `maxWidth`, `maxHeight`, e la prop `width` di `Page` per ottenere la dimensione desiderata.
+
+---
+
+_**User (2025-10-21 17:37Z)**_
+
+mi sembra il file un po' tagliato a sinistra nella visualizzazione
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [PdfViewer.tsx](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/components/PdfViewer.tsx)
+
+Per evitare che il PDF venga tagliato a sinistra, puoi:
+- Centrare il contenuto con `alignItems: 'center'` sul contenitore principale.
+- Rimuovere/minimizzare la larghezza minima se non necessaria.
+- Assicurarti che il contenitore della pagina abbia `display: flex` e `justifyContent: center`.
+
+Ecco la modifica consigliata:
+
+````tsx
+// ...existing code...
+return (
+  <div
+    className="pdf-viewer-modal"
+    style={{
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'relative',
+      alignItems: 'center', // centra il contenuto orizzontalmente
+      width: '96vw',
+      height: '96vh',
+      maxWidth: '1800px',
+      maxHeight: '98vh',
+      minWidth: '0', // rimuovi la larghezza minima
+      minHeight: '600px',
+      boxSizing: 'border-box',
+      overflow: 'hidden'
+    }}
+  >
+    <div style={{ position: 'sticky', top: 0, alignSelf: 'flex-end', zIndex: 10 }}>
+      <button
+        onClick={onClose}
+        style={{
+          minWidth: '80px',
+          margin: '1rem'
+        }}
+      >
+        Chiudi
+      </button>
+    </div>
+    <div style={{ flex: 1, overflow: 'auto', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Document file={file} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
+        {Array.from({ length: numPages }, (_, idx) => (
+          <div key={idx + 1} style={{ marginBottom: '1.7rem', display: 'flex', justifyContent: 'center' }}>
+            <Page
+              pageNumber={idx + 1}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+              width={1600}
+            />
+          </div>
+        ))}
+      </Document>
+    </div>
+  </div>
+);
+// ...existing code...
+````
+
+---
+
+_**User (2025-10-21 17:37Z)**_
+
+adesso c'è troppo spazio a destra
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [PdfViewer.tsx](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/components/PdfViewer.tsx)
+
+Riduci lo spazio a destra:
+- Imposta `maxWidth` e `width` della modale a valori più contenuti (es. `1200px`).
+- Imposta la larghezza della pagina PDF (`width` su `Page`) a un valore coerente (es. `1000`).
+- Assicurati che il contenitore abbia `width: 'auto'` e sia centrato.
+
+````tsx
+// ...existing code...
+return (
+  <div
+    className="pdf-viewer-modal"
+    style={{
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'relative',
+      alignItems: 'center',
+      width: 'auto',
+      maxWidth: '1200px',
+      height: '90vh',
+      minHeight: '600px',
+      boxSizing: 'border-box',
+      overflow: 'hidden',
+      margin: '0 auto'
+    }}
+  >
+    <div style={{ position: 'sticky', top: 0, alignSelf: 'flex-end', zIndex: 10 }}>
+      <button
+        onClick={onClose}
+        style={{
+          minWidth: '80px',
+          margin: '1rem'
+        }}
+      >
+        Chiudi
+      </button>
+    </div>
+    <div style={{ flex: 1, overflow: 'auto', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Document file={file} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
+        {Array.from({ length: numPages }, (_, idx) => (
+          <div key={idx + 1} style={{ marginBottom: '1.7rem', display: 'flex', justifyContent: 'center' }}>
+            <Page
+              pageNumber={idx + 1}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+              width={1000}
+            />
+          </div>
+        ))}
+      </Document>
+    </div>
+  </div>
+);
+// ...existing code...
+````
+
+---
+
+_**User (2025-10-21 17:38Z)**_
+
+non usare px, solo vh vw rem
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [PdfViewer.tsx](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/components/PdfViewer.tsx)
+
+Sostituisci tutte le dimensioni in `px` con unità relative (`vw`, `vh`, `rem`).  
+Imposta la larghezza della modale e delle pagine PDF in `vw`/`rem` per una visualizzazione più fluida.
+
+````tsx
+// ...existing code...
+return (
+  <div
+    className="pdf-viewer-modal"
+    style={{
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'relative',
+      alignItems: 'center',
+      width: '80vw',
+      maxWidth: '90vw',
+      height: '90vh',
+      minHeight: '40vh',
+      boxSizing: 'border-box',
+      overflow: 'hidden',
+      margin: '0 auto'
+    }}
+  >
+    <div style={{ position: 'sticky', top: 0, alignSelf: 'flex-end', zIndex: 10 }}>
+      <button
+        onClick={onClose}
+        style={{
+          minWidth: '5rem',
+          margin: '1rem'
+        }}
+      >
+        Chiudi
+      </button>
+    </div>
+    <div style={{ flex: 1, overflow: 'auto', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Document file={file} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
+        {Array.from({ length: numPages }, (_, idx) => (
+          <div key={idx + 1} style={{ marginBottom: '1.7rem', display: 'flex', justifyContent: 'center' }}>
+            <Page
+              pageNumber={idx + 1}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+              width={Math.min(window.innerWidth * 0.75, 70 * 16)} // larghezza in vw/rem (70rem max)
+            />
+          </div>
+        ))}
+      </Document>
+    </div>
+  </div>
+);
+// ...existing code...
+````
+
+**Nota:**  
+- `width={Math.min(window.innerWidth * 0.75, 70 * 16)}` imposta la larghezza della pagina PDF a 75vw, ma non oltre 70rem (~1120px).  
+- Puoi regolare `80vw`, `90vw`, `40vh`, `70 * 16` (rem in px) secondo le tue preferenze.
+
+---
+
+_**User (2025-10-21 17:38Z)**_
+
+ok così va bene, dici che non c'è lo zoom e il vai alla pagina in react-pdf?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+No, la versione base di `react-pdf` non offre direttamente controlli di zoom o "vai alla pagina".  
+Tuttavia, puoi facilmente aggiungere queste funzionalità gestendo tu lo stato di zoom (larghezza) e pagina corrente.
+
+Esempio di come aggiungere zoom e navigazione pagina:
+
+````tsx
+// ...existing code...
+const [numPages, setNumPages] = useState<number>(1);
+const [pageNumber, setPageNumber] = useState<number>(1);
+const [zoom, setZoom] = useState<number>(Math.min(window.innerWidth * 0.75, 70 * 16));
+
+const handleZoomIn = () => setZoom(z => Math.min(z + 100, window.innerWidth * 0.9));
+const handleZoomOut = () => setZoom(z => Math.max(z - 100, 300));
+const handlePageChange = (n: number) => setPageNumber(n);
+
+return (
+  <div
+    className="pdf-viewer-modal"
+    style={{
+      // ...existing style...
+    }}
+  >
+    <div style={{ position: 'sticky', top: 0, alignSelf: 'flex-end', zIndex: 10, display: 'flex', gap: '1rem' }}>
+      <button onClick={onClose} style={{ minWidth: '5rem', margin: '1rem' }}>Chiudi</button>
+      <button onClick={handleZoomOut}>-</button>
+      <button onClick={handleZoomIn}>+</button>
+      <span>
+        Pagina:
+        <input
+          type="number"
+          min={1}
+          max={numPages}
+          value={pageNumber}
+          onChange={e => handlePageChange(Number(e.target.value))}
+          style={{ width: '3rem', marginLeft: '0.5rem' }}
+        />
+        / {numPages}
+      </span>
+    </div>
+    <div style={{ flex: 1, overflow: 'auto', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Document file={file} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
+        <div style={{ marginBottom: '1.7rem', display: 'flex', justifyContent: 'center' }}>
+          <Page
+            pageNumber={pageNumber}
+            renderTextLayer={false}
+            renderAnnotationLayer={false}
+            width={zoom}
+          />
+        </div>
+      </Document>
+    </div>
+  </div>
+);
+// ...existing code...
+````
+
+**Così hai:**
+- Zoom in/out con i bottoni.
+- Input per andare a una pagina specifica.
+- Visualizzazione di una sola pagina alla volta (puoi adattare per più pagine se vuoi).
+
+---
+
+_**User (2025-10-21 17:40Z)**_
+
+il menu a tendina del Pagina è proprio senza style. Con la scusa, puoi spostare lo style che abbiamo aggiunto in main.scss e usare i colori di variables. Sposta anche quello che va aggiunto per Pagina: 
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [PdfViewer.tsx](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/components/PdfViewer.tsx)
+
+Rimuovi lo style inline dall'input e dal bottone "Chiudi".  
+Aggiungi una classe CSS dedicata per il controllo pagina e per il gruppo di bottoni/controlli.
+
+````tsx
+// ...existing code...
+  return (
+    <div
+      className="pdf-viewer-modal"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        alignItems: 'center',
+        width: '80vw',
+        maxWidth: '90vw',
+        height: '90vh',
+        minHeight: '40vh',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+        margin: '0 auto'
+      }}
+    >
+      <div className="pdf-viewer-controls">
+        <button
+          onClick={onClose}
+          className="pdf-viewer-close-btn"
+        >
+          Chiudi
+        </button>
+        <button className="pdf-viewer-zoom-btn" onClick={handleZoomOut}>-</button>
+        <button className="pdf-viewer-zoom-btn" onClick={handleZoomIn}>+</button>
+        <span className="pdf-viewer-page-label">
+          Pagina:
+          <input
+            type="number"
+            min={1}
+            max={numPages}
+            value={pageNumber}
+            onChange={e => handlePageChange(Number(e.target.value))}
+            className="pdf-viewer-page-input"
+          />
+          / {numPages}
+        </span>
+      </div>
+      <div style={{ flex: 1, overflow: 'auto', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Document file={file} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
+          <div style={{ marginBottom: '1.7rem', display: 'flex', justifyContent: 'center' }}>
+            <Page
+              pageNumber={pageNumber}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+              width={zoom}
+            />
+          </div>
+        </Document>
+      </div>
+    </div>
+  );
+// ...existing code...
+````
+
+---
+
+### [main.scss](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/styles/main.scss)
+
+Aggiungi gli stili per i controlli del PdfViewer, usando solo variabili colore.
+
+````scss
+// ...existing code...
+
+.pdf-viewer-controls {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  position: sticky;
+  top: 0;
+  align-self: flex-end;
+  z-index: 10;
+  background: $color-bg-card;
+  padding: 1rem 1.5rem 0.5rem 1.5rem;
+  border-radius: 0 0 10px 10px;
+}
+
+.pdf-viewer-close-btn,
+.pdf-viewer-zoom-btn {
+  background: $color-primary;
+  color: $color-text-inverse;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5em 1em;
+  font-size: 1em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-bottom: 0;
+}
+.pdf-viewer-close-btn:hover,
+.pdf-viewer-zoom-btn:hover {
+  background: $color-primary-dark;
+}
+
+.pdf-viewer-page-label {
+  color: $color-text;
+  font-size: 1.1em;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pdf-viewer-page-input {
+  width: 4.5rem;
+  padding: 0.3em 0.7em;
+  border-radius: 6px;
+  border: 1px solid $color-border;
+  background: $color-bg-light;
+  color: $color-text;
+  font-size: 1em;
+  margin-left: 0.5rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.pdf-viewer-page-input:focus {
+  border-color: $color-primary;
+}
+
+// ...existing code...
+````
+
+---
+
+_**User (2025-10-21 17:41Z)**_
+
+vedo ancora     <div
+      className="pdf-viewer-modal"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        alignItems: 'center',
+        width: '80vw',
+        maxWidth: '90vw',
+        height: '90vh',
+        minHeight: '40vh',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+        margin: '0 auto'
+      }}
+    >
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [PdfViewer.tsx](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/components/PdfViewer.tsx)
+
+Rimuovi lo style inline dal contenitore principale e usa solo la classe `pdf-viewer-modal`.  
+Gestisci tutte le dimensioni e il layout tramite SCSS.
+
+````tsx
+// ...existing code...
+  return (
+    <div className="pdf-viewer-modal">
+      <div className="pdf-viewer-controls">
+        <button
+          onClick={onClose}
+          className="pdf-viewer-close-btn"
+        >
+          Chiudi
+        </button>
+        <button className="pdf-viewer-zoom-btn" onClick={handleZoomOut}>-</button>
+        <button className="pdf-viewer-zoom-btn" onClick={handleZoomIn}>+</button>
+        <span className="pdf-viewer-page-label">
+          Pagina:
+          <input
+            type="number"
+            min={1}
+            max={numPages}
+            value={pageNumber}
+            onChange={e => handlePageChange(Number(e.target.value))}
+            className="pdf-viewer-page-input"
+          />
+          / {numPages}
+        </span>
+      </div>
+      <div className="pdf-viewer-content">
+        <Document file={file} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
+          <div style={{ marginBottom: '1.7rem', display: 'flex', justifyContent: 'center' }}>
+            <Page
+              pageNumber={pageNumber}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+              width={zoom}
+            />
+          </div>
+        </Document>
+      </div>
+    </div>
+  );
+// ...existing code...
+````
+
+---
+
+### [main.scss](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/styles/main.scss)
+
+Aggiungi/aggiorna lo stile per `.pdf-viewer-modal` e aggiungi `.pdf-viewer-content` per gestire layout e dimensioni con variabili e unità relative.
+
+````scss
+````scss
+````scss
+````scss
+// ...existing code...
+
+.pdf-viewer-modal {
+  background: $color-bg-card;
+  border-radius: 10px;
+  color: $color-text;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  width: 80vw;
+  max-width: 90vw;
+  height: 90vh;
+  min-height: 40vh;
+  box-sizing: border-box;
+  overflow: hidden;
+  margin: 0 auto;
+  padding: 1rem;
+  box-shadow: 0 2px 16px rgba($color-bg, 0.25);
+}
+
+.pdf-viewer-content {
+  flex: 1;
+  overflow: auto;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+// ...existing code...
+````
+
+---
+
+_**User (2025-10-21 17:42Z)**_
+
+puoi mettere "Chiudi" a destra?
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+### [PdfViewer.tsx](file:///c%3A/Users/demig/Documents/vulcano/vulcano-fe/src/components/PdfViewer.tsx)
+
+Porta il bottone "Chiudi" a destra nei controlli, usando un contenitore flex con `justify-content: space-between`.
+
+````tsx
+// ...existing code...
+  return (
+    <div className="pdf-viewer-modal">
+      <div className="pdf-viewer-controls" style={{ justifyContent: 'space-between', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
+          <button className="pdf-viewer-zoom-btn" onClick={handleZoomOut}>-</button>
+          <button className="pdf-viewer-zoom-btn" onClick={handleZoomIn}>+</button>
+          <span className="pdf-viewer-page-label">
+            Pagina:
+            <input
+              type="number"
+              min={1}
+              max={numPages}
+              value={pageNumber}
+              onChange={e => handlePageChange(Number(e.target.value))}
+              className="pdf-viewer-page-input"
+            />
+            / {numPages}
+          </span>
+        </div>
+        <button
+          onClick={onClose}
+          className="pdf-viewer-close-btn"
+        >
+          Chiudi
+        </button>
+      </div>
+      <div className="pdf-viewer-content">
+        <Document file={file} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
+          <div style={{ marginBottom: '1.7rem', display: 'flex', justifyContent: 'center' }}>
+            <Page
+              pageNumber={pageNumber}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+              width={zoom}
+            />
+          </div>
+        </Document>
+      </div>
+    </div>
+  );
+// ...existing code...
+````
+
+---
+
