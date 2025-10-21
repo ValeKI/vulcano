@@ -10,7 +10,6 @@ interface ChatInputProps {
 
 const ChatInput: React.FC<ChatInputProps> = ({onHandlePdfSelect, onQuestionSubmit}) => {
     const [input, setInput] = useState("");
-    const [pdfFile, setPdfFile] = useState<File | null>(null);
     const [showPdfDrop, setShowPdfDrop] = useState(false);
     const [loadingPercent, setLoadingPercent] = useState<number>(0);
 
@@ -34,8 +33,6 @@ const ChatInput: React.FC<ChatInputProps> = ({onHandlePdfSelect, onQuestionSubmi
             // Timer per timeout di 2 minuti
             const timeout = setTimeout(() => {
                 setLoadingPercent(0);
-                setPdfFile(null);
-                setShowPdfDrop(false);
                 error = true;
                 alert("Errore: caricamento file troppo lento o fallito.");
             }, 2 * 60 * 1000);
@@ -55,14 +52,12 @@ const ChatInput: React.FC<ChatInputProps> = ({onHandlePdfSelect, onQuestionSubmi
                 clearInterval(progressInterval);
                 setLoadingPercent(100);
                 setTimeout(() => setLoadingPercent(0), 500);
-                setPdfFile(null);
                 setShowPdfDrop(false);
                 onHandlePdfSelect && onHandlePdfSelect(file);
             } catch (e) {
                 clearTimeout(timeout);
                 clearInterval(progressInterval);
                 setLoadingPercent(0);
-                setPdfFile(null);
                 setShowPdfDrop(false);
                 alert("Errore durante il caricamento del file.");
             }
@@ -82,7 +77,6 @@ const ChatInput: React.FC<ChatInputProps> = ({onHandlePdfSelect, onQuestionSubmi
                     }`}
                     onClick={() => {
                         setShowPdfDrop((prev) => !prev);
-                        setPdfFile(null);
                         setLoadingPercent(0);
                     }}
                     aria-label={showPdfDrop ? "Nascondi PDF" : "Allega PDF"}
