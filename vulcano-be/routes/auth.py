@@ -1,176 +1,103 @@
 from flask import Blueprint, request, jsonify, make_response
-import jwt
-from db import get_cursor
-from utils.jwt_utils import generate_refresh_token, generate_access_token, require_auth, verify_token, verify_refresh_token
-import bcrypt
-from utils.email_utils import send_reset_email
-from datetime import datetime, timedelta, timezone
-from config import CURRENT_CONFIG
-from utils.db.db_user_utils import (
-    get_user_by_username_or_email,
-    get_user_by_email,
-    get_existing_user,
-    insert_user,
-    update_user_password_and_reset_token,
-    update_user_reset_token,
-    get_user_reset_token
-)
-from utils.auth_utils import get_user_from_request
+from utils.jwt_utils import require_auth
+from services.auth_service import AuthService
+from dtos.common_dtos import ErrorResponseDTO
+from dtos.auth_dtos import UserDTO, LoginResponseDTO, RefreshResponseDTO, CheckResponseDTO, SignUpResponseDTO, ForgotPasswordResponseDTO, ResetPasswordResponseDTO
+from commands.auth_commands import LoginCommand, SignUpCommand, ForgotPasswordCommand, ResetPasswordCommand
+from queries.auth_queries import RefreshQuery, CheckQuery
 
 auth_bp = Blueprint("auth", __name__)
 
+def get_status_code(result, default=200):
+    if not isinstance(result, dict):
+        return default
+    if "error" in result:
+        error_map = {
+            "Credenziali mancanti": 400,
+            "Credenziali non valide": 401,
+            "Password non valida nel database": 400,
+            "Nessun token di refresh": 401,
+            "Token di refresh non valido o scaduto": 401,
+            "Utente non trovato": 404,
+            "Dati mancanti": 400,
+            "Utente già esistente": 409,
+            "Email mancante": 400,
+            "Token o nuova password mancanti": 400,
+            "Token scaduto": 400,
+            "Token non valido": 400,
+        }
+        return error_map.get(result["error"], 400)
+    return default
+
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    data = request.get_json()
-    usernameOrEmail = data.get("usernameOrEmail")
-    password = data.get("password")
-
-    if not usernameOrEmail or not password:
-        return jsonify({"error": "Credenziali mancanti"}), 400
-
-    user = get_user_by_username_or_email(usernameOrEmail)
-    if not user:
-        return jsonify({"error": "Credenziali non valide"}), 401
-
-    db_password = user["password"]
-    if isinstance(db_password, str):
-        db_password = db_password.encode()
-
-    try:
-        if not bcrypt.checkpw(password.encode(), db_password):
-            return jsonify({"error": "Credenziali non valide"}), 401
-    except ValueError:
-        return jsonify({"error": "Password non valida nel database"}), 400
-
-    payload = {
-        "id": user["id"],
-        "username": user["username"],
-        "email": user["email"]
-    }
-
-    access_token = generate_access_token(payload)
-    refresh_token = generate_refresh_token(payload)
-
-    response = make_response(jsonify({
-        "token": access_token,
-        "user": {"username": user["username"], "email": user["email"]}
-    }))
-
-    response.set_cookie(
-        "refresh_token",
-        refresh_token,
-        httponly=True,
-        secure=True,
-        samesite="Strict",
-        max_age=60 * 60 * 24 * 7  # 7 giorni
-    )
-
-    return response
-
+    print("[ROUTE] /login called")
+    """Effettua il login dell'utente."""
+    cmd = LoginCommand(**request.get_json())
+    service = AuthService(request)
+    response_dto = service.login_service(cmd)
+    status = get_status_code(response_dto)
+    if hasattr(response_dto, "refresh_token"):
+        response = make_response(jsonify(response_dto.model_dump()), status)
+        response.set_cookie(
+            "refresh_token",
+            response_dto.refresh_token,
+            httponly=True,
+            secure=True,
+            samesite="Strict",
+            max_age=60 * 60 * 24 * 7
+        )
+        return response
+    return jsonify(response_dto.model_dump()), status
 
 @auth_bp.route("/refresh", methods=["POST"])
 @require_auth
 def refresh():
-    refresh_token = request.cookies.get("refresh_token")
-    
-    if not refresh_token:
-        return jsonify({"error": "Nessun token di refresh"}), 401
-
-    decoded = verify_refresh_token(refresh_token)
-    if not decoded:
-        return jsonify({"error": "Token di refresh non valido o scaduto"}), 401
-
-    new_access_token = generate_access_token({
-        "id": decoded["id"],
-        "username": decoded["username"],
-        "email": decoded["email"]
-    })
-
-    return jsonify({"token": new_access_token})
+    print("[ROUTE] /refresh called")
+    """Rigenera il token di accesso tramite refresh token."""
+    query = RefreshQuery(refresh_token=request.cookies.get("refresh_token"))
+    service = AuthService(request)
+    response_dto = service.refresh_service(query)
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
 
 @auth_bp.route("/check", methods=["POST"])
 @require_auth
 def check():
-    user = get_user_from_request()
-    if isinstance(user, tuple):  # Se è una response di errore
-        return user
-
-    # Verifica che l'utente esista a DB
-    db_user = get_user_by_username_or_email(user["username"])
-    if not db_user:
-        return jsonify({"error": "Utente non trovato"}), 404
-
-    return jsonify({
-        "status": "ok",
-        "user": user
-    })
+    print("[ROUTE] /check called")
+    """Verifica la validità dell'utente autenticato."""
+    query = CheckQuery()
+    service = AuthService(request)
+    response_dto = service.check_service(query)
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
 
 @auth_bp.route("/signUp", methods=["POST"])
 def signUp():
-    data = request.get_json()
-    email = data.get("email")
-    password = data.get("password")
-    username = data.get("username")
-
-    if not email or not password or not username:
-        return jsonify({"error": "Dati mancanti"}), 400
-
-    existing_user = get_existing_user(email, username)
-    if existing_user:
-        return jsonify({"error": "Utente già esistente"}), 409
-    
-    salt = bcrypt.gensalt()
-    hashed_pw = bcrypt.hashpw(password.encode(), salt).decode('utf-8')
-
-    insert_user(username, email, hashed_pw)
-
-    return jsonify({"status": "ok", "user": {"username": username, "email": email}})
+    print("[ROUTE] /signUp called")
+    """Registra un nuovo utente."""
+    cmd = SignUpCommand(**request.get_json())
+    service = AuthService(request)
+    response_dto = service.signup_service(cmd)
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
 
 @auth_bp.route("/forgot-password", methods=["POST"])
 def forgot_password():
-    data = request.get_json()
-    email = data.get("email")
-    if not email:
-        return jsonify({"error": "Email mancante"}), 400
-
-    user = get_user_by_email(email)
-    if not user:
-        return jsonify({"status": "ok"}), 200
-
-    payload = {
-        "id": user["id"],
-        "email": user["email"],
-        "exp": datetime.now(timezone.utc) + timedelta(hours=1)
-    }
-    import jwt
-    from config import CURRENT_CONFIG
-    reset_token = jwt.encode(payload, CURRENT_CONFIG.SECRET_KEY, algorithm="HS256")
-    reset_link = f"{CURRENT_CONFIG.FRONTEND_BASE_URL}/reset-password?token={reset_token}"
-    update_user_reset_token(user["id"], reset_token)
-    send_reset_email(email, reset_link)
-    return jsonify({"status": "ok"}), 200
+    print("[ROUTE] /forgot-password called")
+    """Invia email di reset password."""
+    cmd = ForgotPasswordCommand(**request.get_json())
+    service = AuthService(request)
+    response_dto = service.forgot_password_service(cmd)
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
 
 @auth_bp.route("/reset-password", methods=["POST"])
 def reset_password():
-    data = request.get_json()
-    token = data.get("token")
-    new_password = data.get("new_password")
-    if not token or not new_password:
-        return jsonify({"error": "Token o nuova password mancanti"}), 400
-
-    try:
-        decoded = jwt.decode(token, CURRENT_CONFIG.SECRET_KEY, algorithms=["HS256"])
-        user_id = decoded["id"]
-    except jwt.ExpiredSignatureError:
-        return jsonify({"error": "Token scaduto"}), 400
-    except jwt.InvalidTokenError:
-        return jsonify({"error": "Token non valido"}), 400
-    
-    salt = bcrypt.gensalt()
-    hashed_pw = bcrypt.hashpw(new_password.encode(), salt).decode('utf-8')
-
-    rowcount = update_user_password_and_reset_token(user_id, hashed_pw, token)
-    if rowcount == 0:
-        return jsonify({"error": "Token non valido"}), 400
-
-    return jsonify({"status": "ok"}), 200
+    print("[ROUTE] /reset-password called")
+    """Aggiorna la password dell'utente tramite token di reset."""
+    cmd = ResetPasswordCommand(**request.get_json())
+    service = AuthService(request)
+    response_dto = service.reset_password_service(cmd)
+    status = get_status_code(response_dto)
+    return jsonify(response_dto.model_dump()), status
