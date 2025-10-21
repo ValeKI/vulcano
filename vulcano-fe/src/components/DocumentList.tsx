@@ -17,9 +17,18 @@ interface DocumentListProps {
 
 const DocumentList: React.FC<DocumentListProps> = ({ listFiles = [], handleOnViewFile }) => {
 
+    // Ordina i file: prima quelli selezionati (selectByAnswer), poi gli altri
+    const sortedFiles = React.useMemo(() => {
+        return [...listFiles].sort((a, b) => {
+            const aSelected = !!a.selectByAnswer;
+            const bSelected = !!b.selectByAnswer;
+            if (aSelected === bSelected) return 0;
+            return aSelected ? -1 : 1;
+        });
+    }, [listFiles]);
+
     const onViewFile = async (file_id: number) => {
         const blob = await downloadFile(file_id);
-       
         handleOnViewFile && handleOnViewFile(blob);
     }
 
@@ -37,7 +46,7 @@ const DocumentList: React.FC<DocumentListProps> = ({ listFiles = [], handleOnVie
 
     return (
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {listFiles.map((file) => (
+            {sortedFiles.map((file) => (
                 <li key={file.file_id}>
                     <DocumentItem
                         name={file.file_name}
