@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from config import CURRENT_CONFIG
 from functools import wraps
 from flask import request, jsonify
-from utils.db.db_user_utils import get_user_by_username_or_email
+from utils.db.db_user_utils import DbUserUtils
 
 class JwtUtils:
     SECRET_KEY = CURRENT_CONFIG.SECRET_KEY
@@ -59,9 +59,10 @@ def require_auth(f):
         username = decoded.get("username")
         if not username:
             return jsonify({"error": "Token non valido"}), 401
-        user = get_user_by_username_or_email(username)
+        db_user_utils = DbUserUtils()
+        user = db_user_utils.get_user_by_username_or_email(username)
         if not user:
             return jsonify({"error": "Utente non trovato"}), 401
-        # Passa l'utente autenticato alla rotta come keyword argument
+        # Non passare user come argomento, solo chiamata della funzione
         return f(*args, **kwargs)
     return decorated

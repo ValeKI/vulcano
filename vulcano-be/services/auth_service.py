@@ -6,15 +6,7 @@ from db import get_cursor
 from config import CURRENT_CONFIG
 from utils.jwt_utils import JwtUtils
 from utils.email_utils import EmailUtils
-from utils.db.db_user_utils import (
-    get_user_by_username_or_email,
-    get_user_by_email,
-    get_existing_user,
-    insert_user,
-    update_user_password_and_reset_token,
-    update_user_reset_token,
-    get_user_reset_token
-)
+from utils.db.db_user_utils import DbUserUtils
 from utils.auth_utils import AuthUtils
 from dtos.common_dtos import ErrorResponseDTO
 from dtos.auth_dtos import UserDTO, LoginResponseDTO, RefreshResponseDTO, CheckResponseDTO, SignUpResponseDTO, ForgotPasswordResponseDTO, ResetPasswordResponseDTO
@@ -43,7 +35,8 @@ class AuthService:
         """
         if not cmd.usernameOrEmail or not cmd.password:
             return ErrorResponseDTO(error="Credenziali mancanti")
-        user = get_user_by_username_or_email(cmd.usernameOrEmail)
+        db_user_utils = DbUserUtils()
+        user = db_user_utils.get_user_by_username_or_email(cmd.usernameOrEmail)
         if not user:
             return ErrorResponseDTO(error="Credenziali non valide")
         db_password = user["password"]
@@ -94,10 +87,11 @@ class AuthService:
             DTO: CheckResponseDTO, ErrorResponseDTO
         """
         auth_utils = AuthUtils(self.request)
+        db_user_utils = DbUserUtils()
         user = auth_utils.get_user_from_request()
         if user is None:
             return jsonify({"error": "Utente non trovato"}), 401
-        db_user = get_user_by_username_or_email(user["username"])
+        db_user = db_user_utils.get_user_by_username_or_email(user["username"])
         if not db_user:
             return ErrorResponseDTO(error="Utente non trovato")
         return CheckResponseDTO(status="ok", user=user)
@@ -109,14 +103,15 @@ class AuthService:
             dict: Stato e dati utente.
             DTO: SignUpResponseDTO, ErrorResponseDTO
         """
+        db_user_utils = DbUserUtils()
         if not cmd.email or not cmd.password or not cmd.username:
             return ErrorResponseDTO(error="Dati mancanti")
-        existing_user = get_existing_user(cmd.email, cmd.username)
+        existing_user = db_user_utils.get_existing_user(cmd.email, cmd.username)
         if existing_user:
             return ErrorResponseDTO(error="Utente già esistente")
         salt = bcrypt.gensalt()
         hashed_pw = bcrypt.hashpw(cmd.password.encode(), salt).decode('utf-8')
-        insert_user(cmd.username, cmd.email, hashed_pw)
+        db_user_utils.insert_user(cmd.username, cmd.email, hashed_pw)
         return SignUpResponseDTO(status="ok", user={"username": cmd.username, "email": cmd.email})
 
     def forgot_password_service(self, cmd: ForgotPasswordCommand):
@@ -126,9 +121,10 @@ class AuthService:
             dict: Stato.
             DTO: ForgotPasswordResponseDTO, ErrorResponseDTO
         """
+        db_user_utils = DbUserUtils()
         if not cmd.email:
             return ErrorResponseDTO(error="Email mancante")
-        user = get_user_by_email(cmd.email)
+        user = db_user_utils.get_user_by_email(cmd.email)
         if not user:
             return ForgotPasswordResponseDTO(status="ok")
         payload = {
@@ -138,7 +134,7 @@ class AuthService:
         }
         reset_token = jwt.encode(payload, CURRENT_CONFIG.SECRET_KEY, algorithm="HS256")
         reset_link = f"{CURRENT_CONFIG.FRONTEND_BASE_URL}/reset-password?token={reset_token}"
-        update_user_reset_token(user["id"], reset_token)
+        db_user_utils.update_user_reset_token(user["id"], reset_token)
         email_utils = EmailUtils()
         email_utils.send_reset_email(cmd.email, reset_link)
         return ForgotPasswordResponseDTO(status="ok")
@@ -150,6 +146,7 @@ class AuthService:
             dict: Stato.
             DTO: ResetPasswordResponseDTO, ErrorResponseDTO
         """
+        db_user_utils = DbUserUtils()
         if not cmd.token or not cmd.new_password:
             return ErrorResponseDTO(error="Token o nuova password mancanti")
         jwt_utils = JwtUtils()
@@ -162,7 +159,7 @@ class AuthService:
             return ErrorResponseDTO(error="Token non valido")
         salt = bcrypt.gensalt()
         hashed_pw = bcrypt.hashpw(cmd.new_password.encode(), salt).decode('utf-8')
-        rowcount = update_user_password_and_reset_token(user_id, hashed_pw, cmd.token)
+        rowcount = db_user_utils.update_user_password_and_reset_token(user_id, hashed_pw, cmd.token)
         if rowcount == 0:
             return ErrorResponseDTO(error="Token non valido")
         return ResetPasswordResponseDTO(status="ok")
