@@ -13,6 +13,7 @@ from datapizza.modules.prompt import ChatPromptTemplate
 from datapizza.core.vectorstore import VectorConfig
 from datapizza.embedders import ChunkEmbedder
 from datapizza.modules.parsers.docling import DoclingParser
+from datapizza.modules.parsers.text_parser import TextParser
 from datapizza.modules.splitters import NodeSplitter
 from datapizza.pipeline import IngestionPipeline
 from config import CURRENT_CONFIG
@@ -25,22 +26,22 @@ class QdrantUtils:
             collection_name = CURRENT_CONFIG.QDRANT_COLLECTION_NAME
         pipeline = IngestionPipeline(
             modules=[
-                DoclingParser(),
+                TextParser(),
                 NodeSplitter(max_char=chunk_size),
                 embedder,
             ],
             vector_store=vectorstore,
             collection_name=collection_name
         )
-        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file_name)[-1]) as tmp_file:
-            tmp_file.write(file_content)
-            tmp_file_path = tmp_file.name
+        # with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file_name)[-1]) as tmp_file:
+        #     tmp_file.write(file_content)
+        #     tmp_file_path = tmp_file.name
         try:
-            pipeline.run(tmp_file_path, metadata={"file_id": file_id, "user_id": user_id})
+            pipeline.run(self.extract_pdf_text(file_content), metadata={"file_id": file_id, "user_id": user_id})
             print(f"[QDRANT] Ingestion pipeline completed for file: {file_name}")
-        finally:
-            os.remove(tmp_file_path)
-            print(f"[QDRANT] Temp file removed: {tmp_file_path}")
+        except Exception as e:
+            print(f"[QDRANT] Error during ingestion pipeline: {e}")
+            return 0
 
     def get_file_ids_by_answer_id(self, answer_id, collection_name=None):
         print(f"[QDRANT] get_file_ids_by_answer_id called with answer_id={answer_id}")
@@ -60,10 +61,19 @@ class QdrantUtils:
                 )
             ]
         )
-        results = client.scroll(collection_name=collection_name, scroll_filter=q_filter, limit=1000)
-        print(f"[QDRANT] Retrieved {len(results[0])} points for answer_id={answer_id}")
+        all_points = []
+        next_page_offset = None
+        while True:
+            results = client.scroll(collection_name=collection_name, scroll_filter=q_filter, offset=next_page_offset)
+            points = results[0]
+            print(f"[QDRANT] Retrieved {len(points)} points in this page for answer_id={answer_id}")
+            all_points.extend(points)
+            next_page_offset = results[1]
+            if not next_page_offset:
+                break
+        print(f"[QDRANT] Total points retrieved for answer_id={answer_id}: {len(all_points)}")
         file_ids = set()
-        for point in results[0]:
+        for point in all_points:
             file_ids.add(point.payload["file_id"])
         print(f"[QDRANT] Found file_ids: {list(file_ids)}")
         return list(file_ids)
@@ -82,9 +92,19 @@ class QdrantUtils:
                 }
             ]
         }
-        results = client.scroll(collection_name=collection_name, scroll_filter=query, limit=1000)
+        all_points = []
+        next_page_offset = None
+        while True:
+            results = client.scroll(collection_name=collection_name, scroll_filter=query, offset=next_page_offset)
+            points = results[0]
+            print(f"[QDRANT] Retrieved {len(points)} points in this page")
+            all_points.extend(points)
+            next_page_offset = results[1]
+            if not next_page_offset:
+                break
+        print(f"[QDRANT] Total points retrieved: {len(all_points)}")
         file_ids = set()
-        for point in results[0]:
+        for point in all_points:
             file_ids.add(point.payload["file_id"])
         print(f"[QDRANT] Found file_ids: {list(file_ids)}")
         return list(file_ids)
@@ -118,11 +138,20 @@ class QdrantUtils:
                 }
             ]
         }
-        results = client.scroll(collection_name=collection_name, scroll_filter=query, limit=1000)
-        print(f"[QDRANT] Retrieved {len(results[0])} points for file_id={file_id}")
+        all_points = []
+        next_page_offset = None
+        while True:
+            results = client.scroll(collection_name=collection_name, scroll_filter=query, offset=next_page_offset, limit=1000)
+            points = results[0]
+            print(f"[QDRANT] Retrieved {len(points)} points in this page for file_id={file_id}")
+            all_points.extend(points)
+            next_page_offset = results[1]
+            if not next_page_offset:
+                break
+        print(f"[QDRANT] Total points retrieved for file_id={file_id}: {len(all_points)}")
 
         updated_count = 0
-        for point in results[0]:
+        for point in all_points:
             payload = point.payload
             answer_ids = payload.get("answer_ids", [])
             if answer_id not in answer_ids:
@@ -136,3 +165,19 @@ class QdrantUtils:
         else:
             print(f"[QDRANT] No chunks to update for file_id={file_id}")
         return updated_count
+    
+    def extract_pdf_text(self, file_content):
+        print("[QDRANT] extract_pdf_text")
+        if isinstance(file_content, BytesIO):
+            pdf_stream = file_content
+        else:
+            pdf_stream = BytesIO(file_content)
+        reader = PyPDF2.PdfReader(pdf_stream)
+        text = ""
+
+        for page in reader.pages:
+            page_text = page.extract_text() or ""
+            print(f"[QDRANT] Extracted {len(page_text)} chars from page")
+            text += page_text
+        print(f"[QDRANT] Total extracted text length: {len(text)}")
+        return text
