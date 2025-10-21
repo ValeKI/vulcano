@@ -27,18 +27,21 @@ emb = OpenAIEmbedder(api_key=CURRENT_CONFIG.OPENAI_API_KEY, model_name=EMBEDDING
 
 class AIUtils:
     def call_ai_to_generate_answer_mock(self, question, file_list):
+        print(f"[AI] call_ai_to_generate_answer_mock called with question: {question}")
         print("[AI] file_list ricevuti:", file_list)
         risposta = f"Risposta generata per la domanda: {question}"
         sampled_files = random.sample(file_list, min(2, len(file_list)))
         print("[AI] sampled_files scelti:", sampled_files)
         file_ids = [file['file_id'] for file in sampled_files]
         print("[AI] file_ids estratti:", file_ids)
+        print(f"[AI] Mock answer: {risposta}, file_ids: {file_ids}")
         return {
             "answer": risposta,
             "file_ids": file_ids
         }
 
     def call_ai_to_generate_answer(self, question, user_id=None):
+        print(f"[AI] call_ai_to_generate_answer called with question: {question}, user_id: {user_id}")
         dag_pipeline = DagPipeline()
         dag_pipeline.add_module("rewriter", ToolRewriter(
             client=openai_client,
@@ -82,12 +85,14 @@ class AIUtils:
         else:
             response_text = "Nessuna risposta generata. (Errore: risposta nulla)"
 
+        print(f"[AI] AI response: {response_text}")
         return {
             "answer": self.extract_answer_text(response_text),
             "file_ids": self.extract_file_ids_from_response(response_text)
         }
 
     def extract_file_ids_from_response(self, response: str):
+        print(f"[AI] Extracting file_ids from response: {response}")
         """
         Estrae un array di ID da una stringa tipo 'FILE_UTILIZZATI[1, 2]: ...'
         """
@@ -96,13 +101,14 @@ class AIUtils:
             return []
         ids_str = match.group(1)
         ids = [int(x.strip()) for x in ids_str.split(',') if x.strip().isdigit()]
+        print(f"[AI] Extracted file_ids: {ids}")
         return ids
 
     def extract_answer_text(self, response: str):
+        print(f"[AI] Extracting answer text from response: {response}")
         """
         Restituisce solo il testo della risposta, togliendo 'FILE_UTILIZZATI[...]:' iniziale.
         """
         match = re.match(r'FILE_UTILIZZATI\[[^\]]*\]:\s*(.*)', response, re.DOTALL)
-        if match:
-            return match.group(1).strip()
-        return response.strip()
+        print(f"[AI] Extracted answer text: {match.group(1).strip() if match else response.strip()}")
+        return match.group(1).strip() if match else response.strip()

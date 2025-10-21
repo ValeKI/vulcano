@@ -20,6 +20,7 @@ from utils.ai_utils import embedder, vectorstore
 
 class QdrantUtils:
     def upload_file_chunks_to_qdrant(self, user_id, file_id, file_name, file_content, chunk_size=10000, collection_name=None):
+        print(f"[QDRANT] Uploading file chunks: user_id={user_id}, file_id={file_id}, file_name={file_name}")
         if collection_name is None:
             collection_name = CURRENT_CONFIG.QDRANT_COLLECTION_NAME
         pipeline = IngestionPipeline(
@@ -36,10 +37,13 @@ class QdrantUtils:
             tmp_file_path = tmp_file.name
         try:
             pipeline.run(tmp_file_path, metadata={"file_id": file_id, "user_id": user_id})
+            print(f"[QDRANT] Ingestion pipeline completed for file: {file_name}")
         finally:
             os.remove(tmp_file_path)
+            print(f"[QDRANT] Temp file removed: {tmp_file_path}")
 
     def get_file_ids_by_answer_id(self, answer_id, collection_name=None):
+        print(f"[QDRANT] get_file_ids_by_answer_id called with answer_id={answer_id}")
         if collection_name is None:
             collection_name = CURRENT_CONFIG.QDRANT_COLLECTION_NAME
         print(f"[QDRANT] get_file_ids_by_answer_id: {answer_id}")
@@ -65,6 +69,7 @@ class QdrantUtils:
         return list(file_ids)
 
     def get_file_ids_by_user_id(self, user_id, collection_name=None):
+        print(f"[QDRANT] get_file_ids_by_user_id called with user_id={user_id}")
         if collection_name is None:
             collection_name = CURRENT_CONFIG.QDRANT_COLLECTION_NAME
         print(f"[QDRANT] get_file_ids_by_user_id: {user_id}")
@@ -85,7 +90,7 @@ class QdrantUtils:
         return list(file_ids)
 
     def extract_pdf_text(self, file_content):
-        print("[QDRANT] extract_pdf_text")
+        print("[QDRANT] extract_pdf_text called")
         if isinstance(file_content, BytesIO):
             pdf_stream = file_content
         else:
@@ -100,6 +105,7 @@ class QdrantUtils:
         return text
 
     def add_answer_id_to_file_chunks(self, file_id, answer_id, collection_name="files"):
+        print(f"[QDRANT] add_answer_id_to_file_chunks called: file_id={file_id}, answer_id={answer_id}, collection_name={collection_name}")
         if collection_name is None:
             collection_name = CURRENT_CONFIG.QDRANT_COLLECTION_NAME
         print(f"[QDRANT] add_answer_id_to_file_chunks: file_id={file_id}, answer_id={answer_id}")

@@ -23,22 +23,25 @@ class ChatService:
         self.request = request
 
     def get_question_by_id(self, question_id: int):
+        print("[CHAT] get_question_by_id called")
         db_question_utils = DbQuestionUtils()
         question = db_question_utils.get_question_by_id(question_id)
-        if question:
-            return QuestionResponseDTO(**question)
-        return ErrorResponseDTO(error="Question not found")
+        print("[CHAT] get_question_by_id completed")
+        return QuestionResponseDTO(**question) if question else ErrorResponseDTO(error="Question not found")
 
     def list_questions_by_user_id(self):
+        print("[CHAT] list_questions_by_user_id called")
         auth_utils = AuthUtils(self.request)
         db_question_utils = DbQuestionUtils()
         user_id = auth_utils.get_user_id_from_request()
         if user_id is None:
             return jsonify({"error": "Utente non autorizzato"}), 401
         questions = db_question_utils.list_questions_by_user_id(user_id)
+        print("[CHAT] list_questions_by_user_id completed")
         return ListQuestionsResponseDTO(questions=questions)
 
     def insert_question(self):
+        print("[CHAT] insert_question called")
         data = self.request.json
         content = data.get('content')
         auth_utils = AuthUtils(self.request)
@@ -68,6 +71,7 @@ class ChatService:
             question_id = ai_answer.get("question_id")
             answer_id = ai_answer.get("answer_id")
 
+        print("[CHAT] insert_question completed")
         return InsertQuestionResponseDTO(
             id=question_id,
             question=content,
@@ -76,8 +80,8 @@ class ChatService:
         )
 
     def get_answer_by_question_id(self, question_id: int):
+        print("[CHAT] get_answer_by_question_id called")
         db_answer_utils = DbAnswerUtils()
         answer = db_answer_utils.get_answer_by_question_id(question_id)
-        if answer:
-            return AnswerResponseDTO(**answer)
-        return ErrorResponseDTO(error="Answer not found")
+        print("[CHAT] get_answer_by_question_id completed")
+        return AnswerResponseDTO(**answer) if answer else ErrorResponseDTO(error="Answer not found")

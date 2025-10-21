@@ -21,6 +21,7 @@ def get_status_code(result, default=200):
 @chat_bp.route('/questions/<int:question_id>', methods=['GET'])
 @require_auth
 def api_get_question_by_id(question_id):
+    print("[ROUTE] /questions/<id> called")
     """Restituisce una domanda tramite ID."""
     service = ChatService(request)
     response_dto = service.get_question_by_id(question_id)
@@ -30,6 +31,7 @@ def api_get_question_by_id(question_id):
 @chat_bp.route('/questions/user', methods=['GET'])
 @require_auth
 def api_list_questions_by_user_id():
+    print("[ROUTE] /questions/user called")
     """Restituisce la lista delle domande dell'utente autenticato."""
     service = ChatService(request)
     response_dto = service.list_questions_by_user_id()
@@ -39,6 +41,7 @@ def api_list_questions_by_user_id():
 @chat_bp.route('/questions', methods=['POST'])
 @require_auth
 def api_insert_question():
+    print("[ROUTE] /questions POST called")
     """Inserisce una nuova domanda e genera la risposta."""
     service = ChatService(request)
     response_dto = service.insert_question()
@@ -48,6 +51,7 @@ def api_insert_question():
 @chat_bp.route('/answers/<int:question_id>', methods=['GET'])
 @require_auth
 def api_get_answer_by_question_id(question_id):
+    print("[ROUTE] /answers/<id> called")
     """Restituisce la risposta associata a una domanda."""
     service = ChatService(request)
     response_dto = service.get_answer_by_question_id(question_id)

@@ -31,6 +31,7 @@ def get_status_code(result, default=200):
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
+    print("[ROUTE] /login called")
     """Effettua il login dell'utente."""
     cmd = LoginCommand(**request.get_json())
     service = AuthService(request)
@@ -52,6 +53,7 @@ def login():
 @auth_bp.route("/refresh", methods=["POST"])
 @require_auth
 def refresh():
+    print("[ROUTE] /refresh called")
     """Rigenera il token di accesso tramite refresh token."""
     query = RefreshQuery(refresh_token=request.cookies.get("refresh_token"))
     service = AuthService(request)
@@ -62,6 +64,7 @@ def refresh():
 @auth_bp.route("/check", methods=["POST"])
 @require_auth
 def check():
+    print("[ROUTE] /check called")
     """Verifica la validità dell'utente autenticato."""
     query = CheckQuery()
     service = AuthService(request)
@@ -71,6 +74,7 @@ def check():
 
 @auth_bp.route("/signUp", methods=["POST"])
 def signUp():
+    print("[ROUTE] /signUp called")
     """Registra un nuovo utente."""
     cmd = SignUpCommand(**request.get_json())
     service = AuthService(request)
@@ -80,6 +84,7 @@ def signUp():
 
 @auth_bp.route("/forgot-password", methods=["POST"])
 def forgot_password():
+    print("[ROUTE] /forgot-password called")
     """Invia email di reset password."""
     cmd = ForgotPasswordCommand(**request.get_json())
     service = AuthService(request)
@@ -89,6 +94,7 @@ def forgot_password():
 
 @auth_bp.route("/reset-password", methods=["POST"])
 def reset_password():
+    print("[ROUTE] /reset-password called")
     """Aggiorna la password dell'utente tramite token di reset."""
     cmd = ResetPasswordCommand(**request.get_json())
     service = AuthService(request)

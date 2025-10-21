@@ -10,44 +10,54 @@ class JwtUtils:
     REFRESH_SECRET_KEY = CURRENT_CONFIG.REFRESH_SECRET_KEY
 
     def generate_access_token(self, payload: dict, expires_in: int = 86400):
+        print(f"[JWT] Generating access token for payload: {payload}")
         payload_copy = payload.copy()
         payload_copy["exp"] = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
         token = jwt.encode(payload_copy, self.SECRET_KEY, algorithm="HS256")
+        print(f"[JWT] Access token generated")
         return token
 
     def generate_refresh_token(self, payload: dict, expires_in: int = 60 * 60 * 24 * 7):  # 7 giorni
-        print("Generated refresh token in utils - input payload:", payload)
+        print(f"[JWT] Generating refresh token for payload: {payload}")
         data = payload.copy()
         data["exp"] = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
         x = jwt.encode(data, self.REFRESH_SECRET_KEY, algorithm="HS256")
-        print("Generated refresh token in util:", x)
+        print(f"[JWT] Refresh token generated")
         return x
 
     def verify_token(self, token: str):
+        print(f"[JWT] Verifying access token: {token}")
         try:
             decoded = jwt.decode(token, self.SECRET_KEY, algorithms=["HS256"])
-            return decoded
+            print(f"[JWT] Token verification result: {decoded if decoded else 'Invalid/Expired'}")
+            return decoded if 'decoded' in locals() else None
         except jwt.ExpiredSignatureError as e:
             return None
         except jwt.InvalidTokenError as e:
             return None
 
     def verify_refresh_token(self, token: str):
+        print(f"[JWT] Verifying refresh token: {token}")
         try:
             decoded = jwt.decode(token, self.REFRESH_SECRET_KEY, algorithms=["HS256"])
-            return decoded
+            print(f"[JWT] Refresh token verification result: {decoded if decoded else 'Invalid/Expired'}")
+            return decoded if 'decoded' in locals() else None
         except jwt.ExpiredSignatureError as e:
             return None
         except jwt.InvalidTokenError as e:
             return None
 
     def decode_token(self, token: str):
-        return jwt.decode(token, self.SECRET_KEY, algorithms=["HS256"])
+        print(f"[JWT] Decoding token: {token}")
+        decoded = jwt.decode(token, self.SECRET_KEY, algorithms=["HS256"])
+        print(f"[JWT] Decoded token: {decoded}")
+        return decoded
 
 # Funzione esterna per la verifica del token e dell'utente
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        print("[JWT] require_auth called")
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
             return jsonify({"error": "Token mancante"}), 401
@@ -63,6 +73,6 @@ def require_auth(f):
         user = db_user_utils.get_user_by_username_or_email(username)
         if not user:
             return jsonify({"error": "Utente non trovato"}), 401
-        # Non passare user come argomento, solo chiamata della funzione
+        print("[JWT] User authenticated")
         return f(*args, **kwargs)
     return decorated
