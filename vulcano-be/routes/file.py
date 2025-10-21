@@ -1,99 +1,127 @@
 from flask import Blueprint, request, jsonify, send_file
-import os
 from io import BytesIO
 from utils.jwt_utils import require_auth
-from utils.file_utils import get_unique_file_name, insert_new_file
-from utils.minio_utils import upload_user_file, get_user_file
-from utils.auth_utils import get_user_id_from_request
-from utils.db.db_file_utils import list_files_for_user, get_file_by_id
-from utils.qdrant_utils import upload_file_chunks_to_qdrant, get_file_ids_by_user_id, get_file_ids_by_answer_id
+from services.file_service import FileService
 
 file_bp = Blueprint("files", __name__)
+
+def get_status_code(result, default=200):
+    if not isinstance(result, dict):
+        return default
+    if "error" in result:
+        error_map = {
+            "Nessun file inviato": 400,
+            "Nome file mancante": 400,
+            "File vuoto": 400,
+            "File vuoto o non processabile": 400,
+            "ID file mancante": 400,
+            "File non trovato": 404,
+            "answer_id mancante": 400,
+            "answer_id non valido": 400,
+        }
+        return error_map.get(result["error"], 400)
+    return default
 
 @file_bp.route("/upload", methods=["POST"])
 @require_auth
 def upload_file():
-    if "file" not in request.files:
-        return jsonify({"error": "Nessun file inviato"}), 400
+    """Carica un file per l'utente autenticato.
 
-    file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"error": "Nome file mancante"}), 400
-
-    user_id = get_user_id_from_request()
-    if isinstance(user_id, tuple):
-        return user_id
-
-    print("user_id:", user_id)
-    new_file_name = get_unique_file_name(file.filename, user_id)
-
-    file_content = file.read()
-    if not file_content:
-        return jsonify({"error": "File vuoto"}), 400
-
-    upload_user_file(user_id, new_file_name, file_content)
-    file_id = insert_new_file(new_file_name, user_id)
-
-    num_chunks = upload_file_chunks_to_qdrant(user_id, file_id, new_file_name, file_content)
-    if num_chunks == 0:
-        return jsonify({"error": "File vuoto o non processabile"}), 400
-
-    return jsonify({"status": "ok", "filename": new_file_name})
+    ---
+    post:
+      summary: Carica un file per l'utente autenticato.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        200:
+          description: File caricato con successo.
+        400:
+          description: Errore nell'upload del file.
+    """
+    service = FileService(request)
+    result = service.upload_file()
+    status = get_status_code(result)
+    return jsonify(result), status
 
 @file_bp.route("/download", methods=["GET"])
 @require_auth
 def download_file():
-    file_id = request.args.get("file_id")
-    if not file_id:
-        return jsonify({"error": "ID file mancante"}), 400
+    """Scarica un file dell'utente autenticato.
 
-    user_id = get_user_id_from_request()
-    if isinstance(user_id, tuple):
-        return user_id
-
-    try:
-        file_name = get_file_by_id(file_id)["file_name"]
-        file_data = get_user_file(user_id, file_name)
-    except Exception:
-        return jsonify({"error": "File non trovato"}), 404
-
-    return send_file(
-        BytesIO(file_data),
-        download_name=file_name,
-        as_attachment=True
-    )
+    ---
+    get:
+      summary: Scarica un file dell'utente autenticato.
+      parameters:
+        - in: query
+          name: file_id
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: File scaricato con successo.
+        400:
+          description: ID file mancante.
+        404:
+          description: File non trovato.
+    """
+    service = FileService(request)
+    result = service.download_file()
+    status = get_status_code(result)
+    if "file_data" in result and "file_name" in result:
+        return send_file(
+            BytesIO(result["file_data"]),
+            download_name=result["file_name"],
+            as_attachment=True
+        )
+    return jsonify(result), status
 
 @file_bp.route("/list", methods=["GET"])
 @require_auth
 def list_files():
-    user_id = get_user_id_from_request()
-    if isinstance(user_id, tuple):
-        return user_id
+    """Restituisce la lista dei file dell'utente autenticato.
 
-    file_ids = get_file_ids_by_user_id(user_id)
-    files = []
-    for file_id in file_ids:
-        file_data = get_file_by_id(file_id)
-        if file_data:
-            files.append(file_data)
-    return jsonify({"files": files})
+    ---
+    get:
+      summary: Restituisce la lista dei file dell'utente autenticato.
+      responses:
+        200:
+          description: Lista file restituita con successo.
+    """
+    service = FileService(request)
+    result = service.list_files()
+    status = get_status_code(result)
+    return jsonify(result), status
 
 @file_bp.route("/list_by_answer_id", methods=["GET"])
 @require_auth
 def list_files_by_answer_id():
-    answer_id = request.args.get("answer_id")
-    if not answer_id:
-        return jsonify({"error": "answer_id mancante"}), 400
+    """Restituisce la lista dei file associati a una risposta.
 
-    try:
-        answer_id = int(answer_id)
-    except Exception:
-        return jsonify({"error": "answer_id non valido"}), 400
-
-    file_ids = get_file_ids_by_answer_id(answer_id)
-    files = []
-    for file_id in file_ids:
-        file_data = get_file_by_id(file_id)
-        if file_data:
-            files.append(file_data)
-    return jsonify({"files": files})
+    ---
+    get:
+      summary: Restituisce la lista dei file associati a una risposta.
+      parameters:
+        - in: query
+          name: answer_id
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: Lista file restituita con successo.
+        400:
+          description: answer_id mancante o non valido.
+    """
+    service = FileService(request)
+    result = service.list_files_by_answer_id()
+    status = get_status_code(result)
+    return jsonify(result), status
