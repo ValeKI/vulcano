@@ -4,7 +4,7 @@ Vulcano è un'applicazione per l'analisi di documenti PDF, composta da backend (
 
 ## Endpoint:
 - FE -> http://localhost:5173
-- BE -> http://localhost:5000
+- BE -> http://localhost:5000 - swagger http://localhost:5000/apidocs
 - postgres -> host: localhost - port: 5432 - user: vulcanoroot - password: stromboli
 - qdrant -> http://localhost:6333/dashboard - user e password non configurati
 - redis -> host: localhost - port: 6379 - db:0 - user e password non configurati
@@ -81,6 +81,12 @@ python -m flask run
 Il backend sarà disponibile sulla porta **5000**.
 
 **Frontend (FE):**
+Versioni utilizzate:
+- Node: v22.20.0
+- npm: v11.6.2
+
+Il progetto utilizza `package-lock.json` per la gestione delle dipendenze, assicurando installazioni riproducibili.
+
 Se si vuole far partire il progetto in locale e non su docker:
 ```sh
 cd vulcano-fe
