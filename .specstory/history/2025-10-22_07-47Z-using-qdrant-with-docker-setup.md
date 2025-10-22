@@ -329,3 +329,17 @@ def get_status_code(result, default=200):
 
 ---
 
+_**User (2025-10-22 09:19Z)**_
+
+ciao, devo aggiungere la configurazione di ngix al mio progetto react typescript vite, perché dei redirect mi vanno in 404
+
+---
+
+_**Assistant (copilot/gpt-4.1)**_
+
+Sure, here's a proposed directory structure for a React TypeScript Vite project with Nginx configuration:
+
+
+
+---
+
