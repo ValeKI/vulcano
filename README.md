@@ -40,7 +40,23 @@ Vulcano è un'applicazione per l'analisi di documenti PDF, composta da backend (
 
 Il progetto include una configurazione Docker Compose per avviare tutti i servizi necessari (backend, frontend, database, MinIO, Qdrant).
 
-### Avvio rapido con Docker Compose
+### Avvio rapido con Makefile
+
+Assicurati di avere [Docker](https://www.docker.com/get-started/) installato sul tuo sistema e [Make](https://www.gnu.org/software/make/).
+
+Apri un terminale ed esegui:
+
+```sh
+make up        # Avvia tutti i servizi in background
+make down      # Ferma e rimuove i container
+make logs      # Mostra i log dei servizi
+make build     # Builda le immagini docker
+make restart   # Riavvia i servizi
+make clean     # Rimuove tutto (container, volumi, orfani)
+```
+
+
+### Avvio con Docker Compose
 
 Assicurati di avere [Docker](https://www.docker.com/get-started/) installato sul tuo sistema.
 
