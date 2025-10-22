@@ -7,9 +7,14 @@ from dtos.common_dtos import ErrorResponseDTO
 chat_bp = Blueprint('chat', __name__)
 
 def get_status_code(result, default=200):
-    if not isinstance(result, dict):
-        return default
-    if "error" in result:
+    if isinstance(result, dict):
+        error = result.get("error")
+    elif hasattr(result, "error"):
+        error = getattr(result, "error")
+    else:
+        error = None
+
+    if error:
         error_map = {
             "Question not found": 404,
             "Nessun file disponibile per l'utente": 400,
