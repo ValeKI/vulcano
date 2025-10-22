@@ -1,0 +1,104 @@
+# docker-compose.yml
+# Version: 0.0.1
+services:
+  postgres:
+    build:
+      context: ./postgres
+    container_name: postgres_container
+    image: vulcano_postgres_db:0.0.1
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  qdrant:
+    build:
+      context: ./qdrant
+    container_name: qdrant_container
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - backend
+
+  redis:
+    build:
+      context: ./redis
+    container_name: redis_container
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+
+  minio:
+    build:
+      context: ./minio
+    container_name: minio_container
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000" # API S3
+      - "9001:9001" # Console web
+    volumes:
+      - minio_data:/data
+    networks:
+      - backend
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog_container
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    profiles:
+      - dev
+    networks:
+      - backend
+
+  vulcano_fe:
+    build:
+      context: ./vulcano-fe
+    container_name: vulcano_fe_container
+    image: vulcano_fe:0.0.1 
+    ports:
+      - "5173:80"
+    networks:
+      - backend
+      
+  vulcano_be:
+    build:
+      context: ./vulcano-be
+    container_name: vulcano_be_container
+    image: vulcano_be:0.0.1
+    ports:
+      - "5000:5000"
+    environment:
+      FLASK_ENV: docker
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    depends_on:
+      - postgres
+      - redis
+      - minio
+      - qdrant
+    networks:
+      - backend
+
+volumes:
+  postgres_data:
+  qdrant_data:
+  redis_data:
+  minio_data:
+
+networks:
+  backend:
+    driver: bridge

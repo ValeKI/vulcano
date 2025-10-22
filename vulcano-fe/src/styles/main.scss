@@ -1,0 +1,598 @@
+@use '_variables.scss' as *;
+
+.vulcano-page {
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+  background: $color-bg;
+  color: $color-text;
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+
+.card {
+  padding: 2em;
+  background: $color-bg-card;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba($color-bg-hover, 0.15);
+  color: $color-text;
+}
+
+
+.loginbox {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+
+  .box {
+    background: $color-bg-card;
+    padding: 2rem 2.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 16px rgba($color-bg-hover, 0.15);
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  h2 {
+    margin-bottom: 1.5rem;
+    color: $color-text;
+    font-size: 2rem;
+    font-weight: 600;
+  }
+
+  form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .user-input {
+    padding: 0.75em 1em;
+    border-radius: 6px;
+    border: 1px solid $color-bg-hover;
+    background: $color-surface;
+    color: $color-text;
+    font-size: 1em;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .user-input:focus {
+    border-color: $color-primary;
+  }
+
+  button[type="submit"] {
+    background: $color-primary;
+    color: $color-text-inverse;
+    border: none;
+    border-radius: 6px;
+    padding: 0.75em 1em;
+    font-size: 1em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  button[type="submit"]:hover {
+    background: $color-primary-dark;
+  }
+
+  .forgot-btn {
+    background: none;
+    color: $color-text-muted;
+    border: none;
+    font-size: 0.95em;
+    margin-top: 0.5em;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.2s;
+  }
+  .forgot-btn:hover {
+    color: $color-primary;
+  }
+}
+
+body {
+  overflow: hidden;
+}
+
+.loginbox-container {
+  background: --color-bg-light;
+}
+
+.chatbox-container {
+  display: flex;
+  height: 80vh;
+  width: 80vw;
+  margin: auto;
+  background: $color-bg-card;
+  border-radius: 1.2rem;
+  box-shadow: 0 0.125rem 1rem rgba($color-bg, 0.08);
+  overflow: hidden;
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  margin: auto;
+}
+
+.chatbox-left,
+.chatbox-right {
+  flex: 1.1;
+  background: $color-bg-light;
+  padding: 1.5rem;
+  border-right: 0.07rem solid $color-border;
+  min-width: 14rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-width: 19rem;
+}
+
+.chatbox-right {
+  border-right: none;
+  border-left: 0.07rem solid $color-border;
+}
+
+.chatbox-center {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chatbox-responsewindow {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.chatbox-chatwindow {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  margin-bottom: 0;
+}
+
+.chat-window-form,
+.chat-input-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  align-items: stretch;
+  margin-top: auto;
+}
+
+.chat-input-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.chat-input-row .chat-window {
+  flex: 1 1 auto;
+  margin-bottom: 0;
+  height: 3.5rem;
+  min-height: 3.5rem;
+  max-height: 8.75rem;
+  resize: vertical;
+}
+
+.chat-input-row button[type="submit"],
+.chat-input-togglepdf {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.2rem;
+  font-size: 1.1em;
+  margin-bottom: 0;
+  box-sizing: border-box;
+}
+
+.chat-input-togglepdf {
+  border-radius: 0.375rem;
+  border: none;
+  background: $color-bg-card;
+  color: $color-primary;
+  font-size: 1.7em;
+  font-weight: bold;
+  margin-right: 0.25rem;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  box-shadow: 0 0.0625rem 0.25rem rgba($color-bg, 0.06);
+  outline: none;
+  border: 0.125rem solid transparent;
+}
+.chat-input-togglepdf:hover,
+.chat-input-togglepdf.active {
+  background: $color-primary;
+  color: $color-text-inverse;
+  border: 0.125rem solid $color-primary;
+}
+
+.file-view {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  border: 1px solid $color-border;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  background-color: $color-bg-light;
+
+  &.selected {
+    background-color: $color-selected;
+
+    &:hover {
+      background-color: $color-selected-hover;
+    }
+  }
+
+  &:hover {
+    background-color: $color-bg-hover;
+  }
+
+  .file-icon {
+    width: 40px;
+    display: flex;
+    justify-content: center;
+
+    img {
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  .file-name {
+    flex-grow: 1;
+    text-align: center;
+    font-size: 1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: $color-text;
+  }
+
+  .file-actions {
+    display: flex;
+    gap: 0.5rem;
+
+    button {
+      border: none;
+      background: none;
+      cursor: pointer;
+      padding: 0;
+
+      img {
+        width: 20px;
+        height: 20px;
+      }
+
+      &:hover img {
+        filter: brightness(0.7);
+      }
+    }
+  }
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.chatbox-container textarea,
+.chatbox-center textarea,
+textarea {
+  border-radius: 12px;
+  &:focus {
+    outline: none;
+    box-shadow: none;
+  }
+}
+
+.chat-window {
+  flex: 1;
+  padding: 0.5rem;
+  min-height: 2.5em;
+  resize: none;
+  overflow-x: auto;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  border-radius: 12px;
+}
+
+.response-window-content {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: 1rem;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: $color-bg-light;
+  box-shadow: 0 2px 8px $color-bg-hover;
+}
+
+.response-label {
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  color: $color-text;
+}
+
+.response-question {
+  margin-bottom: 1rem;
+  color: $color-text;
+}
+
+.response-answer {
+  color: $color-text;
+}
+
+/* Scrollbar moderna, sottile e con thumb tondeggiante */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background: $color-bg-card;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $color-primary;
+  border-radius: 12px;
+  min-height: 24px;
+  min-width: 24px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: $color-primary-dark;
+}
+
+::-webkit-scrollbar-corner {
+  background: $color-bg-card;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: $color-primary $color-bg-card;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  background: $color-bg-card;
+  border-bottom: 1px solid $color-border;
+  padding: 0 2rem;
+  box-sizing: border-box;
+  z-index: 10;
+
+  &-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  &-logo {
+    height: 32px;
+    width: 32px;
+    border-radius: 8px;
+    background: $color-bg-hover;
+    padding: 4px;
+    box-shadow: 0 1px 4px rgba($color-bg-hover, 0.12);
+  }
+
+  &-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  &-logout {
+    color: $color-primary;
+    font-weight: 500;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: color 0.2s;
+    &:hover {
+      color: $color-primary-dark;
+    }
+  }
+}
+
+.pdf-file-drop {
+  border: 0.125rem dashed $color-border;
+  border-radius: 0.5rem;
+  padding: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 11rem;
+  min-height: 2.5rem;
+  cursor: pointer;
+  background: $color-bg-light;
+  transition: border-color 0.2s;
+  color: $color-text-muted;
+
+  &__filename {
+    font-size: 0.95em;
+    color: $color-text;
+  }
+
+  &__placeholder {
+    color: $color-text-muted;
+    font-size: 0.95em;
+  }
+
+  &__loading {
+    color: $color-info;
+    font-size: 1em;
+    font-weight: 500;
+  }
+}
+
+.pdf-file-drop.drag-active {
+  border: 0.125rem solid $color-primary;
+  color: $color-primary;
+}
+
+.pdf-file-drop-input {
+  display: none;
+}
+
+.chat-input-form {
+  background: $color-bg-light;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  box-shadow: 0 0.0625rem 0.25rem rgba(0,0,0,0.04);
+  border: 0.07rem solid $color-border;
+}
+
+.chat-input-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+  align-self: flex-end;
+}
+
+.chat-input-pdfdrop {
+  margin-top: 0.5rem;
+  display: flex;
+  width: 100%;
+}
+
+.chat-input-pdfdrop-inner {
+  width: 100%;
+  display: flex;
+}
+
+.chat-input-pdfdrop-inner > .pdf-file-drop {
+  width: 100%;
+  min-height: 3.5rem;
+}
+
+.pdf-viewer-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba($color-bg, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pdf-viewer-modal {
+  background: $color-bg-card;
+  border-radius: 10px;
+  color: $color-text;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  width: 80vw;
+  max-width: 90vw;
+  height: 90vh;
+  min-height: 40vh;
+  box-sizing: border-box;
+  overflow: hidden;
+  margin: 0 auto;
+  padding: 1rem;
+  box-shadow: 0 2px 16px rgba($color-bg, 0.25);
+}
+
+.pdf-viewer-content {
+  flex: 1;
+  overflow: auto;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pdf-viewer-modal button {
+  background: $color-primary;
+  color: $color-text-inverse;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5em 1em;
+  font-size: 1em;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  align-self: flex-end;
+  transition: background 0.2s;
+}
+.pdf-viewer-modal button:hover {
+  background: $color-primary-dark;
+}
+
+.pdf-viewer-controls {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  position: sticky;
+  top: 0;
+  align-self: flex-end;
+  z-index: 10;
+  background: $color-bg-card;
+  padding: 1rem 1.5rem 0.5rem 1.5rem;
+  border-radius: 0 0 10px 10px;
+}
+
+.pdf-viewer-close-btn,
+.pdf-viewer-zoom-btn {
+  background: $color-primary;
+  color: $color-text-inverse;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5em 1em;
+  font-size: 1em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-bottom: 0;
+}
+.pdf-viewer-close-btn:hover,
+.pdf-viewer-zoom-btn:hover {
+  background: $color-primary-dark;
+}
+
+.pdf-viewer-page-label {
+  color: $color-text;
+  font-size: 1.1em;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pdf-viewer-page-input {
+  width: 4.5rem;
+  padding: 0.3em 0.7em;
+  border-radius: 6px;
+  border: 1px solid $color-border;
+  background: $color-bg-light;
+  color: $color-text;
+  font-size: 1em;
+  margin-left: 0.5rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.pdf-viewer-page-input:focus {
+  border-color: $color-primary;
+}
