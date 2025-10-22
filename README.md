@@ -7,7 +7,7 @@ Vulcano è un'applicazione per l'analisi di documenti PDF, composta da backend (
 - BE -> http://localhost:5000 - swagger http://localhost:5000/apidocs
 - postgres -> host: localhost - port: 5432 - user: vulcanoroot - password: stromboli
 - qdrant -> http://localhost:6333/dashboard - user e password non configurati
-- redis -> host: localhost - port: 6379 - db:0 - user e password non configurati
+- redis -> host: localhost - port: 6379 - db: 0 - user e password non configurati
 - minio -> host: localhost - port: 9000 - user: minioadmin - password: minioadmin
 
 ## Backend
@@ -44,7 +44,7 @@ Il progetto include una configurazione Docker Compose per avviare tutti i serviz
 
 Assicurati di avere [Docker](https://www.docker.com/get-started/) installato sul tuo sistema e [Make](https://www.gnu.org/software/make/).
 
-Apri un terminale ed esegui:
+Comandi Makefile:
 
 ```sh
 make up        # Avvia tutti i servizi in background
