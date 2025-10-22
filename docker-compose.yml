@@ -1,8 +1,11 @@
+# docker-compose.yml
+# Version: 0.0.1
 services:
   postgres:
     build:
       context: ./postgres
     container_name: postgres_container
+    image: vulcano_postgres_db:0.0.1
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -66,6 +69,7 @@ services:
     build:
       context: ./vulcano-fe
     container_name: vulcano_fe_container
+    image: vulcano_fe:0.0.1 
     ports:
       - "5173:80"
     networks:
@@ -75,6 +79,7 @@ services:
     build:
       context: ./vulcano-be
     container_name: vulcano_be_container
+    image: vulcano_be:0.0.1
     ports:
       - "5000:5000"
     environment:
