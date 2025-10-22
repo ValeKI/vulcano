@@ -14,7 +14,7 @@ openai_client = OpenAIClient(
     model="gpt-4o-mini",
     api_key=CURRENT_CONFIG.OPENAI_API_KEY
 )
-vectorstore = QdrantVectorstore(host="localhost", port=6333)
+vectorstore = QdrantVectorstore(host=CURRENT_CONFIG.QDRANT_HOST, port=CURRENT_CONFIG.QDRANT_PORT, timeout=30.0)
 EMBEDDING_MODEL = CURRENT_CONFIG.EMBEDDING_MODEL
 EMBEDDING_DIM = CURRENT_CONFIG.EMBEDDING_DIM
 chatEmbedder = OpenAIEmbedder(api_key=CURRENT_CONFIG.OPENAI_API_KEY, model_name=EMBEDDING_MODEL)

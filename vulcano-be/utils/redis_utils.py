@@ -1,10 +1,14 @@
 import base64
 import redis
 import json
+from config import CURRENT_CONFIG
 
 
 class RedisUtils:
-    def __init__(self, host='localhost', port=6379, db=0):
+    def __init__(self, host=None, port=None, db=None):
+        host = host if host is not None else CURRENT_CONFIG.REDIS_HOST
+        port = port if port is not None else CURRENT_CONFIG.REDIS_PORT
+        db = db if db is not None else CURRENT_CONFIG.REDIS_DB
         print(f"[REDIS] Connecting to Redis at {host}:{port}, db={db}")
         self.redis_client = redis.Redis(host=host, port=port, db=db)
 

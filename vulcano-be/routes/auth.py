@@ -9,9 +9,14 @@ from queries.auth_queries import RefreshQuery, CheckQuery
 auth_bp = Blueprint("auth", __name__)
 
 def get_status_code(result, default=200):
-    if not isinstance(result, dict):
-        return default
-    if "error" in result:
+    if isinstance(result, dict):
+        error = result.get("error")
+    elif hasattr(result, "error"):
+        error = getattr(result, "error")
+    else:
+        error = None
+
+    if error:
         error_map = {
             "Credenziali mancanti": 400,
             "Credenziali non valide": 401,
@@ -26,7 +31,7 @@ def get_status_code(result, default=200):
             "Token scaduto": 400,
             "Token non valido": 400,
         }
-        return error_map.get(result["error"], 400)
+        return error_map.get(error, 400)
     return default
 
 @auth_bp.route("/login", methods=["POST"])

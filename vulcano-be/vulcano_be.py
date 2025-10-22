@@ -5,9 +5,10 @@ from flasgger import Swagger
 from routes.auth import auth_bp
 from routes.file import file_bp
 from routes.chat import chat_bp
+from config import CURRENT_CONFIG
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=["http://localhost:3000", "http://localhost:5173"])
+CORS(app, supports_credentials=True, origins=[CURRENT_CONFIG.FRONTEND_BASE_URL])
 
 with open("swagger.json", "r", encoding="utf-8") as f:
     swagger_template = json.load(f)
