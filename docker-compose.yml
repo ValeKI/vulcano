@@ -62,6 +62,32 @@ services:
     networks:
       - backend
 
+  vulcano_fe:
+    build:
+      context: ./vulcano-fe
+    container_name: vulcano_fe_container
+    ports:
+      - "5173:80"
+    networks:
+      - backend
+      
+  vulcano_be:
+    build:
+      context: ./vulcano-be
+    container_name: vulcano_be_container
+    ports:
+      - "5000:5000"
+    environment:
+      FLASK_ENV: docker
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    depends_on:
+      - postgres
+      - redis
+      - minio
+      - qdrant
+    networks:
+      - backend
+
 volumes:
   postgres_data:
   qdrant_data:

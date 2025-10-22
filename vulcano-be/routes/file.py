@@ -8,9 +8,14 @@ from dtos.common_dtos import ErrorResponseDTO
 file_bp = Blueprint("files", __name__)
 
 def get_status_code(result, default=200):
-    if not isinstance(result, dict):
-        return default
-    if "error" in result:
+    if isinstance(result, dict):
+        error = result.get("error")
+    elif hasattr(result, "error"):
+        error = getattr(result, "error")
+    else:
+        error = None
+
+    if error:
         error_map = {
             "Nessun file inviato": 400,
             "Nome file mancante": 400,
