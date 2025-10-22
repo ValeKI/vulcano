@@ -1,18 +1,7 @@
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import PointStruct, Filter, FieldCondition
+from qdrant_client.http.models import Filter, FieldCondition
 from io import BytesIO
 import PyPDF2
-import tempfile
-import os
-from datapizza.embedders.openai import OpenAIEmbedder
-from datapizza.vectorstores.qdrant import QdrantVectorstore
-from datapizza.clients.openai import OpenAIClient
-from datapizza.pipeline import DagPipeline
-from datapizza.modules.rewriters import ToolRewriter
-from datapizza.modules.prompt import ChatPromptTemplate
-from datapizza.core.vectorstore import VectorConfig
-from datapizza.embedders import ChunkEmbedder
-from datapizza.modules.parsers.docling import DoclingParser
 from datapizza.modules.parsers.text_parser import TextParser
 from datapizza.modules.splitters import NodeSplitter
 from datapizza.pipeline import IngestionPipeline

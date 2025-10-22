@@ -2,11 +2,11 @@ FROM node:22.20.0-alpine AS build
 
 WORKDIR /app
 
-COPY ../vulcano-fe/package*.json ./
+COPY package*.json ./
 RUN npm ci
 
-COPY ../vulcano-fe/. ./
-COPY .env.docker .env
+COPY . ./
+COPY .env.docker .env.local
 
 RUN npm run build
 
