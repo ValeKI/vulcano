@@ -6,3 +6,5 @@ __pycache__/
 
 # Ignore VSCode settings
 .vscode/
+# Ignore SpecStory chat history
+.specstory/
