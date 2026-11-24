@@ -1,6 +1,31 @@
 # Vulcano
 
-Vulcano è un'applicazione per l'analisi di documenti PDF, composta da backend (BE), frontend (FE) e servizi di persistenza gestiti tramite Docker Compose.
+> ⚠️ **Progetto incompleto:** Vulcano è un MVP in fase di sviluppo. Alcune funzionalità sono parziali o assenti e il codice non è pensato per l'uso in produzione. Le credenziali indicate in questo README sono fittizie e valgono solo per l'ambiente di sviluppo locale.
+
+Vulcano è un'applicazione web per **interrogare i propri documenti PDF in linguaggio naturale**. Carichi i tuoi file, fai una domanda in chat e ricevi una risposta generata dall'AI basata sul contenuto dei documenti, insieme all'elenco dei file da cui l'informazione è stata presa.
+
+## Panoramica
+
+**A cosa serve**
+- Trovare rapidamente informazioni all'interno di più documenti PDF senza doverli leggere tutti
+- Ottenere risposte verificabili: ogni risposta indica i documenti sorgente, che si possono scaricare e consultare
+- Tenere in un unico spazio personale (con login) i propri documenti e lo storico delle domande
+
+**Come funziona** (Retrieval-Augmented Generation)
+1. **Caricamento:** il PDF viene salvato su MinIO, il testo viene estratto e diviso in chunk
+2. **Indicizzazione:** ogni chunk viene trasformato in embedding (OpenAI) e salvato in Qdrant
+3. **Domanda:** la domanda dell'utente viene riformulata e usata per recuperare i chunk più rilevanti
+4. **Risposta:** un LLM (OpenAI) genera la risposta a partire dai chunk recuperati; il risultato viene messo in cache su Redis
+
+La pipeline AI è costruita con la libreria `datapizza-ai`.
+
+**Architettura**
+- **Frontend:** React + TypeScript (Vite)
+- **Backend:** Python + Flask, con API REST documentate tramite Swagger
+- **Servizi:** PostgreSQL (utenti), MinIO (file), Qdrant (ricerca vettoriale), Redis (cache), Mailhog (email di sviluppo)
+- Tutto avviabile con Docker Compose
+
+Il progetto è composto da backend (BE), frontend (FE) e servizi di persistenza gestiti tramite Docker Compose.
 
 ## Endpoint:
 - FE -> http://localhost:5173
